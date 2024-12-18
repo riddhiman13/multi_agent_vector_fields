@@ -1,0 +1,5 @@
+<launch>
+    <node name="cf_rviz_node" pkg="agent_rviz" type="cf_rviz_node" output="screen" />
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find agent_rviz)/config/rviz_config.rviz" />
+</launch>
+
