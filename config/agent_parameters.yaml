@@ -1,0 +1,11 @@
+detect_shell_rad: 0.35
+agent_mass: 1.0
+agent_radius: 0.5
+velocity_max: 1.0
+k_a_ee: [4.0, 4.0, 4.0, 4.0]
+k_c_ee: [2.0, 4.0, 4.0, 4.0]
+k_r_ee: [2.0, 4.0, 4.0, 4.0]
+k_r_force: [0.0, 0.0, 0.0, 0.0]
+k_d_ee: [1.0, 1.0, 1.0, 1.0]
+k_manip: [0.0, 0.0, 0.0, 0.0]
+
