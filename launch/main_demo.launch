@@ -1,0 +1,17 @@
+<launch>
+   
+    <node pkg="roslaunch" type="roscore" name="roscore" required="true"/>
+
+    
+    <node name="main_node" pkg="multi_agent_vector_fields" type="main_node" output="screen">
+        
+        <param name="start_goal_path" value="$(find multi_agent_vector_fields)/config/start_goal.yaml"/>
+        <param name="obstacles_path" value="$(find multi_agent_vector_fields)/config/obstacles.yaml"/>
+        <param name="agent_parameters_path" value="$(find multi_agent_vector_fields)/config/agent_parameters.yaml"/>
+    </node>
+
+   
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find multi_agent_vector_fields)/config/demo.rviz" required="false"/>
+
+</launch>
+

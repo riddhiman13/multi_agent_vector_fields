@@ -2,6 +2,7 @@
 #include <visualization_msgs/Marker.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/Twist.h>
 #include <std_msgs/Float64.h>
 #include <yaml-cpp/yaml.h>
 #include <ros/package.h>
@@ -94,8 +95,9 @@ int main(int argc, char** argv) {
     ROS_INFO("CF_ANGENTS_MANAGER_DEMO");
 
     ros::Publisher marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 10);
-    ros::Publisher goal_pub = nh.advertise<geometry_msgs::Point>("goal_position", 10);
+    ros::Publisher pos_pub = nh.advertise<geometry_msgs::Point>("agent_position", 10);
     ros::Publisher dist_pub = nh.advertise<std_msgs::Float64>("distance_to_goal", 10);
+    ros::Publisher twist_pub = nh.advertise<geometry_msgs::Twist>("agent_twist", 10); 
     tf2_ros::TransformBroadcaster tf_broadcaster;
 
     // Read from YAML files
@@ -267,17 +269,28 @@ int main(int argc, char** argv) {
             cf_manager.resetEEAgents(updated_position, cf_manager.getNextVelocity(), obstacles);
             cf_manager.startPrediction();
 
-            // pos goal points 
-            geometry_msgs::Point goal_msg;
-            goal_msg.x = cf_manager.getNextPosition().x();
-            goal_msg.y = cf_manager.getNextPosition().y();
-            goal_msg.z = cf_manager.getNextPosition().z();
-            goal_pub.publish(goal_msg);
+            // post agent postion 
+            geometry_msgs::Point pos_msg;
+            pos_msg.x = cf_manager.getNextPosition().x();
+            pos_msg.y = cf_manager.getNextPosition().y();
+            pos_msg.z = cf_manager.getNextPosition().z();
+            pos_pub.publish(pos_msg);
 
-            // pos dist
+            // post dist
             std_msgs::Float64 dist_msg;
             dist_msg.data = cf_manager.getDistFromGoal();
             dist_pub.publish(dist_msg);
+
+            // post agent twists
+            geometry_msgs::Twist twist_msg;
+            Eigen::Vector3d current_velocity = cf_manager.getNextVelocity();
+            twist_msg.linear.x = current_velocity.x();
+            twist_msg.linear.y = current_velocity.y();
+            twist_msg.linear.z = current_velocity.z();
+            twist_msg.angular.x = 0.0;
+            twist_msg.angular.y = 0.0;
+            twist_msg.angular.z = 0.0;
+            twist_pub.publish(twist_msg);
         } 
         else 
         {
