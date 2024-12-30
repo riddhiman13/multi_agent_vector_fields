@@ -261,7 +261,7 @@ int main(int argc, char** argv) {
             //ROS_INFO("After moveRealEEAgent, position: [%.2f, %.2f, %.2f]", updated_position.x(), updated_position.y(), updated_position.z());
 
             double end_plan_timestamp = ros::Time::now().toSec();
-            //ROS_INFO("Planning time: %.3f seconds", end_plan_timestamp - start_plan_timestamp);
+            ROS_INFO("Planning time: %.3f seconds", end_plan_timestamp - start_plan_timestamp);
 
             // next circle 
             cf_manager.resetEEAgents(updated_position, cf_manager.getNextVelocity(), obstacles);

@@ -160,8 +160,6 @@ class CfAgent {
       const std::vector<Obstacle> &obstacles, const int obstacle_id) const {};
 
   double evalObstacleDistance(const std::vector<Obstacle> &obstacles) const;
-  void manipulabilityForce(const std::vector<Eigen::Vector3d> &manip_map,
-                           double k_manip, double offset, double resolution);
   virtual bool isRealAgent() { return false; };
   virtual std::unique_ptr<CfAgent> makeCopy() {
     return std::unique_ptr<CfAgent>(new CfAgent(*this));

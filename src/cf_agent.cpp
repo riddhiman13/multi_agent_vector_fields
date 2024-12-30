@@ -253,23 +253,6 @@ Eigen::Vector3d CfAgent::bodyForce(const std::vector<Obstacle> &obstacles,
   return force_;
 }
 
-void CfAgent::manipulabilityForce(const std::vector<Eigen::Vector3d> &manip_map,
-                                  double k_manip, double offset,
-                                  double resolution) {
-  int dim_size = 60;
-  assert(manip_map.size() == dim_size * dim_size * dim_size);
-  Eigen::Vector3d pos_cm =
-      (100 * getLatestPosition()) + Eigen::Vector3d{offset, offset, offset};
-  int idx_x = (int)(pos_cm.x() / resolution);
-  int idx_y = (int)(pos_cm.y() / resolution);
-  int idx_z = (int)(pos_cm.z() / resolution);
-  if ((idx_x >= 0) && (idx_x < dim_size) && (idx_y >= 0) &&
-      (idx_y < dim_size) && (idx_z >= 0) && (idx_z < dim_size)) {
-    int idx = idx_x + dim_size * idx_y + dim_size * dim_size * idx_z;
-    force_ += k_manip * manip_map[idx];
-  }
-}
-
 void CfAgent::updatePositionAndVelocity(const double delta_t) {
   Eigen::Vector3d robot_acc = force_ / mass_;
   double acc_norm = robot_acc.norm();

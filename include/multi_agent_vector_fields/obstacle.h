@@ -25,7 +25,7 @@ class Obstacle {
     // Constructors
     Obstacle(const std::string& name, const Eigen::Vector3d& pos,
              const Eigen::Vector3d& vel, double rad, bool is_dynamic , // = false
-             double angular_speed ) // = 0
+             double angular_speed ) // = 0true
         : name_{name}, pos_{pos}, vel_{vel}, rad_{rad}, center_{pos},
           is_dynamic_{is_dynamic}, angular_speed_{angular_speed} {direction_  = (std::rand() % 2 == 0) ? -1 : 1;};
 
@@ -65,8 +65,8 @@ void updatePosition(double delta_time)
             center_ = pos_; // 初始化圆心为初始位置
         }
 
-        double angle = direction_* angular_speed_ * delta_time;
-     
+        //double angle = direction_* angular_speed_ * delta_time;
+        double angle =  angular_speed_ * delta_time;
         Eigen::Vector3d offset = pos_ - center_;
         if (offset.norm() < 1e-6) 
         {
@@ -74,7 +74,7 @@ void updatePosition(double delta_time)
         }
         
         Eigen::Matrix3d rotation;
-        rotation = Eigen::AngleAxisd(angle, Eigen::Vector3d::UnitY());
+        rotation = Eigen::AngleAxisd(angle, Eigen::Vector3d::UnitZ());
         Eigen::Vector3d rotated_offset = rotation * offset;
         
         pos_ = center_ + rotated_offset;
