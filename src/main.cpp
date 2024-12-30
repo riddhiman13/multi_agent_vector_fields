@@ -2,7 +2,7 @@
 #include <visualization_msgs/Marker.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <geometry_msgs/TransformStamped.h>
-#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/TwistStamped.h>
 #include <std_msgs/Float64.h>
 #include <yaml-cpp/yaml.h>
 #include <ros/package.h>
@@ -27,6 +27,10 @@ void visualizeMarker(ros::Publisher& marker_pub, const Eigen::Vector3d& position
     marker.pose.position.x = position.x();
     marker.pose.position.y = position.y();
     marker.pose.position.z = position.z();
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
     marker_pub.publish(marker);
 }
 
@@ -97,7 +101,7 @@ int main(int argc, char** argv) {
     ros::Publisher marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 10);
     ros::Publisher pos_pub = nh.advertise<geometry_msgs::Point>("agent_position", 10);
     ros::Publisher dist_pub = nh.advertise<std_msgs::Float64>("distance_to_goal", 10);
-    ros::Publisher twist_pub = nh.advertise<geometry_msgs::Twist>("agent_twist", 10); 
+    ros::Publisher twist_pub = nh.advertise<geometry_msgs::TwistStamped>("agent_twist", 10); 
     tf2_ros::TransformBroadcaster tf_broadcaster;
 
     // Read from YAML files
@@ -223,6 +227,7 @@ int main(int argc, char** argv) {
                     path_marker.color.g = 0.0;
                     path_marker.color.b = (i == best_agent_id) ? 0.0 : 1.0;
                     path_marker.color.a = 1.0;
+                    path_marker.pose.orientation.w = 1.0;
 
                     for (const Eigen::Vector3d& point : path) 
                     {
@@ -250,6 +255,7 @@ int main(int argc, char** argv) {
             trajectory_point.y = current_agent_pos.y();
             trajectory_point.z = current_agent_pos.z();
             trajectory_marker.points.push_back(trajectory_point);
+            trajectory_marker.pose.orientation.w = 1.0;
             marker_pub.publish(trajectory_marker);
 
 
@@ -282,14 +288,16 @@ int main(int argc, char** argv) {
             dist_pub.publish(dist_msg);
 
             // post agent twists
-            geometry_msgs::Twist twist_msg;
+            geometry_msgs::TwistStamped twist_msg;
             Eigen::Vector3d current_velocity = cf_manager.getNextVelocity();
-            twist_msg.linear.x = current_velocity.x();
-            twist_msg.linear.y = current_velocity.y();
-            twist_msg.linear.z = current_velocity.z();
-            twist_msg.angular.x = 0.0;
-            twist_msg.angular.y = 0.0;
-            twist_msg.angular.z = 0.0;
+            twist_msg.header.stamp = ros::Time::now();
+            twist_msg.header.frame_id = "agent_frame";
+            twist_msg.twist.linear.x = current_velocity.x();
+            twist_msg.twist.linear.y = current_velocity.y();
+            twist_msg.twist.linear.z = current_velocity.z();
+            twist_msg.twist.angular.x = 0.0;
+            twist_msg.twist.angular.y = 0.0;
+            twist_msg.twist.angular.z = 0.0;
             twist_pub.publish(twist_msg);
         } 
         else 
