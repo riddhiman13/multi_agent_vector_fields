@@ -70,7 +70,7 @@ void updatePosition(double delta_time)
         Eigen::Vector3d offset = pos_ - center_;
         if (offset.norm() < 1e-6) 
         {
-            offset = 2 * Eigen::Vector3d(rad_, 0, 0); 
+            offset = 2* Eigen::Vector3d(rad_, 0, 0); 
         }
         
         Eigen::Matrix3d rotation;

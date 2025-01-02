@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
     // Read from YAML files
     std::string package_path = ros::package::getPath("multi_agent_vector_fields");
     YAML::Node start_goal = YAML::LoadFile(package_path + "/config/start_goal.yaml");
-    YAML::Node obstacles_yaml = YAML::LoadFile(package_path + "/config/obstacles.yaml");
+    YAML::Node obstacles_yaml = YAML::LoadFile(package_path + "/config/obstacles_2.yaml");
     YAML::Node agent_parameters = YAML::LoadFile(package_path + "/config/agent_parameters.yaml");
 
     Eigen::Vector3d start_pos = readVector3d(start_goal["start_pos"]);
@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
             {
                 visualizeMarker(marker_pub, obstacles[i].getPosition(), static_cast<int>(i + 10),
                                 "cf_agent_demo_obstacles", "map", obstacles[i].getRadius() * 2.0,
-                                0.0, 0.0, 1.0, 1.0);
+                                0.6, 0.2, 0.1, 1.0);
             }
 
             // Set Agents first pos
@@ -222,10 +222,10 @@ int main(int argc, char** argv) {
                     path_marker.id = static_cast<int>(i + 20);
                     path_marker.type = visualization_msgs::Marker::LINE_STRIP;
                     path_marker.action = visualization_msgs::Marker::ADD;
-                    path_marker.scale.x = 0.02;
+                    path_marker.scale.x = 0.04;
                     path_marker.color.r = (i == best_agent_id) ? 1.0 : 0.0;
                     path_marker.color.g = 0.2;
-                    path_marker.color.b = (i == best_agent_id) ? 0.0 : 1.5;
+                    path_marker.color.b = (i == best_agent_id) ? 0.0 : 1.0;
                     path_marker.color.a = 1.0;
                     path_marker.pose.orientation.w = 1.0;
 
