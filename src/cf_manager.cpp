@@ -100,7 +100,13 @@ void CfManager::init(
         agent_mass, radius, velocity_max, approach_dist, obstacle_size,
         obstacles));
   }
-  
+  for (size_t i = ee_agents_.size(); i < k_a_ee.size(); ++i) {
+    ee_agents_.push_back(std::make_unique<RandomCfAgent>(
+        ee_agents_.size() + 1, init_pos_, goal_pos, detect_shell_rad,
+        agent_mass, radius, velocity_max, approach_dist, obstacle_size,
+        obstacles));
+  }
+    
   Vector3d zeros{0.0, 0.0, 0.0};
   for (size_t i = 0; i < k_r_force.size(); ++i) 
   {

@@ -1,7 +1,14 @@
 # multi_agent_vector_fields
 Circular Fields based (global) motion planner
 
-In order to run it:
-1. git clone https://github.com/riddhiman13/multi_agent_vector_fields.git
+Used Agents:
+   1. REAL_AGENT,
+   2. GOAL_HEURISTIC,
+   3. OBSTACLE_HEURISTIC,
+   4. GOAL_OBSTACLE_HEURISTIC,
+   5. VEL_HEURISTIC,
+   6. RANDOM_AGENT,
+   7. HAD_HEURISTIC,
 
-2. roslaunch multi_agent_vector_fields main_demo.launch 
+In order to run it:
+ roslaunch multi_agent_vector_fields main_demo.launch 

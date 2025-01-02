@@ -65,12 +65,12 @@ void updatePosition(double delta_time)
             center_ = pos_; // 初始化圆心为初始位置
         }
 
-        //double angle = direction_* angular_speed_ * delta_time;
-        double angle =  angular_speed_ * delta_time;
+        double angle = direction_* angular_speed_ * delta_time;
+        //double angle =  angular_speed_ * delta_time;
         Eigen::Vector3d offset = pos_ - center_;
         if (offset.norm() < 1e-6) 
         {
-            offset = Eigen::Vector3d(rad_, 0, 0); 
+            offset = 2 * Eigen::Vector3d(rad_, 0, 0); 
         }
         
         Eigen::Matrix3d rotation;

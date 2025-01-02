@@ -222,10 +222,10 @@ int main(int argc, char** argv) {
                     path_marker.id = static_cast<int>(i + 20);
                     path_marker.type = visualization_msgs::Marker::LINE_STRIP;
                     path_marker.action = visualization_msgs::Marker::ADD;
-                    path_marker.scale.x = 0.05;
+                    path_marker.scale.x = 0.02;
                     path_marker.color.r = (i == best_agent_id) ? 1.0 : 0.0;
-                    path_marker.color.g = 0.0;
-                    path_marker.color.b = (i == best_agent_id) ? 0.0 : 1.0;
+                    path_marker.color.g = 0.2;
+                    path_marker.color.b = (i == best_agent_id) ? 0.0 : 1.5;
                     path_marker.color.a = 1.0;
                     path_marker.pose.orientation.w = 1.0;
 
@@ -246,7 +246,7 @@ int main(int argc, char** argv) {
             ROS_INFO("Current agent position: [%.2f, %.2f, %.2f]", current_agent_pos.x(), current_agent_pos.y(), current_agent_pos.z());
 
             // visual current agent
-            visualizeMarker(marker_pub, current_agent_pos, 100, "cf_agent_demo_agents", "map", 0.5, 1.0, 1.0, 0.0, 1.0);
+            visualizeMarker(marker_pub, current_agent_pos, 100, "cf_agent_demo_agents", "map", 0.2, 1.0, 1.0, 0.0, 1.0);
 
 
             // upgrade real traj
