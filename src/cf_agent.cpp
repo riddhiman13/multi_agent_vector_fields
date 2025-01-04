@@ -199,14 +199,32 @@ void CfAgent::repelForce(const std::vector<Obstacle> &obstacles,
 
 void CfAgent::attractorForce(const double k_attr, const double k_damp, const double k_goal_scale) 
 {
-  if (k_attr == 0.0) {
+  if (k_attr == 0.0) 
+  {
     return;
   }
+  // --- rotational part ---
   Eigen::Vector3d goal_vec{g_pos_ - getLatestPosition()};
   Eigen::Vector3d vel_des = k_attr / k_damp * goal_vec;
   double scale_lim = std::min(1.0, vel_max_ / vel_des.norm());
   vel_des *= scale_lim;
   force_ += k_goal_scale * k_damp * (vel_des - vel_);
+
+  // --- rotational part ---
+  Eigen::Quaterniond error_quaternion = goal_orientation_ * current_orientation_.conjugate();
+  Eigen::Vector3d error_vector = error_quaternion.vec(); //
+  //ROS_INFO("error_vector: x=%.2f, y=%.2f, z=%.2f", error_vector.x(), error_vector.y(), error_vector.z());
+
+  Eigen::Vector3d desired_angular_velocity = (k_attr / k_damp) * error_vector;
+  double max_angular_velocity = 1.0; 
+  double scaling_factor = std::min(1.0, max_angular_velocity / desired_angular_velocity.norm());
+  desired_angular_velocity *= scaling_factor;  // one by one like the paper 
+  //ROS_INFO("desired_angular_velocity: x=%.2f, y=%.2f, z=%.2f", desired_angular_velocity.x(), desired_angular_velocity.y(), desired_angular_velocity.z());
+  //ROS_INFO("angular_velocity_: x=%.2f, y=%.2f, z=%.2f", angular_velocity_.x(), angular_velocity_.y(), angular_velocity_.z());
+
+  angular_force_ = k_damp * (desired_angular_velocity - angular_velocity_);
+  //ROS_INFO("angular_force_: x=%.2f, y=%.2f, z=%.2f, magnitude=%.2f", angular_force_.x(), angular_force_.y(), angular_force_.z(), angular_force_.norm());
+
 }
 
 double CfAgent::attractorForceScaling(const std::vector<Obstacle> &obstacles) 
@@ -253,7 +271,9 @@ Eigen::Vector3d CfAgent::bodyForce(const std::vector<Obstacle> &obstacles,
   return force_;
 }
 
-void CfAgent::updatePositionAndVelocity(const double delta_t) {
+void CfAgent::updatePositionAndVelocity(const double delta_t) 
+{
+  // linear pary 
   Eigen::Vector3d robot_acc = force_ / mass_;
   double acc_norm = robot_acc.norm();
   if (acc_norm > 13.0) 
@@ -269,7 +289,46 @@ void CfAgent::updatePositionAndVelocity(const double delta_t) {
     vel_ *= vel_max_ / vel_norm;
   }
   pos_.push_back(new_pos);
+
+ // Angular part (update orientation)
+ 
+    //ROS_INFO("angular_force_: x=%.2f, y=%.2f, z=%.2f, magnitude=%.2f", angular_force_.x(), angular_force_.y(), angular_force_.z(), angular_force_.norm());
+    Eigen::Vector3d angular_acc = angular_force_ / mass_; 
+    angular_velocity_ += angular_acc * delta_t;
+    
+    Eigen::Quaterniond delta_q;
+    double angle = angular_velocity_.norm() * delta_t;
+    //ROS_INFO("Angle %10f", angle);
+    if (angle > 1e-6) 
+    { 
+        Eigen::Vector3d axis = angular_velocity_.normalized();
+        delta_q = Eigen::AngleAxisd(angle, axis);
+        current_orientation_ = (current_orientation_ * delta_q).normalized();
+
+        // ROS_INFO("Current orientation: [w=%.2f, x=%.2f, y=%.2f, z=%.2f]",
+        //     current_orientation_.w(), current_orientation_.x(),
+        //     current_orientation_.y(), current_orientation_.z());
+
+    }  
 }
+
+void CfAgent::updateAngularVelocity(const Eigen::Vector3d& new_angular_velocity)
+{
+    angular_velocity_ = new_angular_velocity;
+}
+
+
+void CfAgent::updateOrientation(const double delta_t) {
+    // (0, w_x, w_y, w_z)
+    Eigen::Quaterniond omega(0, angular_velocity_.x(), angular_velocity_.y(), angular_velocity_.z());
+
+    // 0.5 * delta_t * (current_orientation_ * omega)
+    Eigen::Quaterniond delta_q = Eigen::Quaterniond(0.5 * delta_t * (current_orientation_ * omega).coeffs());
+
+    current_orientation_.coeffs() += delta_q.coeffs();
+    current_orientation_.normalize(); // kkep that 
+}
+
 
 void CfAgent::predictObstacles(const double delta_t) {
   for (auto &&obstacle : obstacles_) 

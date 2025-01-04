@@ -2,7 +2,7 @@ obstacles:
   - name: "Obstacle1"
     position: [5.0, 5.0, 0.0]
     velocity: [0.0, 0.0, 0.0]
-    radius: 0.8
+    radius: 0.5
     is_dynamic: true
     angular_speed: 0.5
   - name: "Obstacle2"
@@ -22,7 +22,7 @@ obstacles:
     velocity: [0.0, 0.0, 0.0]
     radius: 0.6
     is_dynamic: true
-    angular_speed: 0.8
+    angular_speed: 0.5
   - name: "Obstacle5"
     position: [4.0, 2.0, 0.0]
     velocity: [0.0, 0.0, 0.0]

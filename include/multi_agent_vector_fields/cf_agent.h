@@ -8,7 +8,7 @@
 #include <iostream>
 #include <memory>
 #include <vector>
-
+#include <ros/ros.h>
 #include "multi_agent_vector_fields/obstacle.h"
 #include "eigen3/Eigen/Dense"
 
@@ -39,6 +39,12 @@ class CfAgent {
   Eigen::Vector3d init_pos_;
   Eigen::Vector3d g_pos_;
   Eigen::Vector3d force_;
+  Eigen::Vector3d angular_force_;
+  
+
+  Eigen::Quaterniond current_orientation_;
+  Eigen::Quaterniond goal_orientation_;
+  Eigen::Vector3d angular_velocity_; 
   double detect_shell_rad_;
   double mass_;
   double rad_;
@@ -69,7 +75,9 @@ class CfAgent {
           const Eigen::Vector3d goal_pos, const double detect_shell_rad,
           const double agent_mass, const double radius,
           const double velocity_max, const double approach_dist,
-          const int num_obstacles, const std::vector<Obstacle> obstacles)
+          const int num_obstacles, const std::vector<Obstacle> obstacles,
+          const Eigen::Quaterniond& initial_orientation,
+          const Eigen::Quaterniond& goal_orientation)
       : id_{id},
         pos_{agent_pos},
         vel_{0.01, 0.0, 0.0},
@@ -79,6 +87,7 @@ class CfAgent {
         detect_shell_rad_{detect_shell_rad},
         min_obs_dist_{detect_shell_rad},
         force_{0.0, 0.0, 0.0},
+        angular_force_{0.0, 0.0, 0.0},
         mass_{agent_mass},
         rad_{radius},
         vel_max_{velocity_max},
@@ -87,7 +96,18 @@ class CfAgent {
         running_{false},
         finished_{false},
         reached_goal_{false},
-        obstacles_{obstacles} {
+        obstacles_{obstacles},
+        current_orientation_{initial_orientation},
+        goal_orientation_{goal_orientation} ,
+        angular_velocity_{Eigen::Vector3d::Zero()}  // 初始化角速度
+        {
+              ROS_INFO("CfAgent initialized:");
+    ROS_INFO("  current_orientation_: [w=%.3f, x=%.3f, y=%.3f, z=%.3f]",
+             current_orientation_.w(), current_orientation_.x(),
+             current_orientation_.y(), current_orientation_.z());
+    ROS_INFO("  goal_orientation_!!!!: [w=%.3f, x=%.3f, y=%.3f, z=%.3f]",
+             goal_orientation_.w(), goal_orientation_.x(),
+             goal_orientation_.y(), goal_orientation_.z());
     Eigen::Vector3d default_rot_vec{0.0, 0.0, 1.0};
     for (size_t i = 0; i < num_obstacles; i++) {
       field_rotation_vecs_.push_back(default_rot_vec);
@@ -109,9 +129,14 @@ class CfAgent {
   Eigen::Vector3d getGoalPosition() const { return g_pos_; };
   virtual void setPosition(Eigen::Vector3d position);
   void setInitalPosition(Eigen::Vector3d position);
+
+  void setOrientation(const Eigen::Quaterniond& orientation) { current_orientation_ = orientation; }
+  Eigen::Quaterniond getOrientation() const { return current_orientation_; }
+
   void resetForce() { force_ << 0.0, 0.0, 0.0; };
   Eigen::Vector3d getForce() { return force_; };
   Eigen::Vector3d getVelocity() { return vel_; };
+  Eigen::Vector3d getAngularVelocity() const { return angular_velocity_; }
   double getDistFromGoal() const {
     return (g_pos_ - this->getLatestPosition()).norm();
   };
@@ -138,6 +163,8 @@ class CfAgent {
   Eigen::Vector3d bodyForce(const std::vector<Obstacle> &obstacles,
                             const double k_repel);
   void updatePositionAndVelocity(const double delta_t);
+  void updateAngularVelocity(const Eigen::Vector3d& new_angular_velocity);
+  void updateOrientation(const double delta_t) ;
   void predictObstacles(const double delta_t);
   virtual void cfPlanner(const std::vector<Eigen::Vector3d> &manip_map,
                          const std::vector<Obstacle> &obstacles,
@@ -174,10 +201,10 @@ class RealCfAgent : public CfAgent {
               const Eigen::Vector3d goal_pos, const double detect_shell_rad,
               const double agent_mass, const double radius,
               const double velocity_max, const double approach_dist,
-              const int num_obstacles)
+              const int num_obstacles,Eigen::Quaterniond current_orientation_,Eigen::Quaterniond goal_orientation_)
       : CfAgent(id, agent_pos, goal_pos, detect_shell_rad, agent_mass, radius,
                 velocity_max, approach_dist, num_obstacles,
-                std::vector<Obstacle>()){};
+                std::vector<Obstacle>(),current_orientation_,goal_orientation_){};
   RealCfAgent() = default;
 
   Eigen::Vector3d currentVector(
@@ -214,9 +241,9 @@ class GoalHeuristicCfAgent : public CfAgent {
                        const double detect_shell_rad, const double agent_mass,
                        const double radius, const double velocity_max,
                        const double approach_dist, const int num_obstacles,
-                       const std::vector<Obstacle> obstacles)
+                       const std::vector<Obstacle> obstacles,Eigen::Quaterniond current_orientation_,Eigen::Quaterniond goal_orientation_)
       : CfAgent(id, agent_pos, goal_pos, detect_shell_rad, agent_mass, radius,
-                velocity_max, approach_dist, num_obstacles, obstacles){};
+                velocity_max, approach_dist, num_obstacles, obstacles,current_orientation_,goal_orientation_){};
   Eigen::Vector3d currentVector(
       const Eigen::Vector3d agent_pos, const Eigen::Vector3d agent_vel,
       const Eigen::Vector3d goal_pos, const std::vector<Obstacle> &obstacles,
@@ -243,9 +270,9 @@ class ObstacleHeuristicCfAgent : public CfAgent {
                            const double agent_mass, const double radius,
                            const double velocity_max,
                            const double approach_dist, const int num_obstacles,
-                           const std::vector<Obstacle> obstacles)
+                           const std::vector<Obstacle> obstacles,Eigen::Quaterniond current_orientation_,Eigen::Quaterniond goal_orientation_)
       : CfAgent(id, agent_pos, goal_pos, detect_shell_rad, agent_mass, radius,
-                velocity_max, approach_dist, num_obstacles, obstacles){};
+                velocity_max, approach_dist, num_obstacles, obstacles,current_orientation_,goal_orientation_){};
   Eigen::Vector3d currentVector(
       const Eigen::Vector3d agent_pos, const Eigen::Vector3d agent_vel,
       const Eigen::Vector3d goal_pos, const std::vector<Obstacle> &obstacles,
@@ -272,9 +299,9 @@ class GoalObstacleHeuristicCfAgent : public CfAgent {
                                const double velocity_max,
                                const double approach_dist,
                                const int num_obstacles,
-                               const std::vector<Obstacle> obstacles)
+                               const std::vector<Obstacle> obstacles,Eigen::Quaterniond current_orientation_,Eigen::Quaterniond goal_orientation_)
       : CfAgent(id, agent_pos, goal_pos, detect_shell_rad, agent_mass, radius,
-                velocity_max, approach_dist, num_obstacles, obstacles){};
+                velocity_max, approach_dist, num_obstacles, obstacles,current_orientation_,goal_orientation_){};
   Eigen::Vector3d currentVector(
       const Eigen::Vector3d agent_pos, const Eigen::Vector3d agent_vel,
       const Eigen::Vector3d goal_pos, const std::vector<Obstacle> &obstacles,
@@ -299,9 +326,9 @@ class VelHeuristicCfAgent : public CfAgent {
                       const double detect_shell_rad, const double agent_mass,
                       const double radius, const double velocity_max,
                       const double approach_dist, const int num_obstacles,
-                      const std::vector<Obstacle> obstacles)
+                      const std::vector<Obstacle> obstacles,Eigen::Quaterniond current_orientation_,Eigen::Quaterniond goal_orientation_)
       : CfAgent(id, agent_pos, goal_pos, detect_shell_rad, agent_mass, radius,
-                velocity_max, approach_dist, num_obstacles, obstacles){};
+                velocity_max, approach_dist, num_obstacles, obstacles,current_orientation_,goal_orientation_){};
   Eigen::Vector3d currentVector(
       const Eigen::Vector3d agent_pos, const Eigen::Vector3d agent_vel,
       const Eigen::Vector3d goal_pos, const std::vector<Obstacle> &obstacles,
@@ -327,9 +354,11 @@ class RandomCfAgent : public CfAgent {
                 const Eigen::Vector3d goal_pos, const double detect_shell_rad,
                 const double agent_mass, const double radius,
                 const double velocity_max, const double approach_dist,
-                const int num_obstacles, const std::vector<Obstacle> obstacles)
+                const int num_obstacles, const std::vector<Obstacle> obstacles,
+                Eigen::Quaterniond current_orientation_,Eigen::Quaterniond goal_orientation_)
+
       : CfAgent(id, agent_pos, goal_pos, detect_shell_rad, agent_mass, radius,
-                velocity_max, approach_dist, num_obstacles, obstacles) {
+                velocity_max, approach_dist, num_obstacles, obstacles, current_orientation_, goal_orientation_) {
     // For recreating the simulation with the same behavior
     // saveRandomVecToFile(num_obstacles);
     for (size_t i = 0; i < num_obstacles; i++) {
@@ -364,9 +393,9 @@ class HadHeuristicCfAgent : public CfAgent {
                       const double detect_shell_rad, const double agent_mass,
                       const double radius, const double velocity_max,
                       const double approach_dist, const int num_obstacles,
-                      const std::vector<Obstacle> obstacles)
+                      const std::vector<Obstacle> obstacles,Eigen::Quaterniond current_orientation_,Eigen::Quaterniond goal_orientation_)
       : CfAgent(id, agent_pos, goal_pos, detect_shell_rad, agent_mass, radius,
-                velocity_max, approach_dist, num_obstacles, obstacles){};
+                velocity_max, approach_dist, num_obstacles, obstacles,current_orientation_,goal_orientation_){};
   Eigen::Vector3d currentVector(
       const Eigen::Vector3d agent_pos, const Eigen::Vector3d agent_vel,
       const Eigen::Vector3d goal_pos, const std::vector<Obstacle> &obstacles,

@@ -44,6 +44,8 @@ class CfManager {
             const std::vector<double> &k_d_ee,
             const std::vector<double> &k_manip,
             const std::vector<double> &k_r_force,
+            const Eigen::Quaterniond& start_orientation,
+            const Eigen::Quaterniond& goal_orientation,
             const double velocity_max = 0.5, const double approach_dist = 0.25,
             const double detect_shell_rad = 0.8,
             const size_t max_prediction_steps = 1500,
@@ -76,8 +78,12 @@ class CfManager {
   Eigen::Vector3d getNextPosition() {
     return real_ee_agent_.getLatestPosition();
   };
+  Eigen::Quaterniond getNextOrientation()  {
+    return real_ee_agent_.getOrientation();
+}
   Eigen::Vector3d getInitialPosition() { return init_pos_; };
   Eigen::Vector3d getNextVelocity() { return real_ee_agent_.getVelocity(); };
+  Eigen::Vector3d getNextAngularVelocity() const {return real_ee_agent_.getAngularVelocity();}
   Eigen::Vector3d getEEForce() { return real_ee_agent_.getForce(); };
   Eigen::Vector3d getGoalPosition() const { return goal_pos_; };
   int getNumPredictionSteps(int agent_id) {
@@ -106,6 +112,8 @@ class CfManager {
       const double velocity_max = 0.5,
       const double approach_dist = 0.25, 
       const double detect_shell_rad = 0.8,
+      const Eigen::Quaterniond& start_orientation = Eigen::Quaterniond::Identity(),
+      const Eigen::Quaterniond& goal_orientation = Eigen::Quaterniond::Identity(),
       const size_t max_prediction_steps = 1500,
       const size_t prediction_freq_multiple = 1, 
       const double agent_mass = 1.0,
@@ -116,6 +124,8 @@ class CfManager {
       const std::vector<Obstacle> &obstacles);
       
   Eigen::Vector3d getRealEEAgentPosition() const; 
+  Eigen::Quaterniond getNextOrientation() const;
+
   
   void setRealEEAgentPosition(const Eigen::Vector3d &position);
   void setEEAgentPositions(const Eigen::Vector3d &position);

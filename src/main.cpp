@@ -11,7 +11,7 @@
 
 using namespace ghostplanner::cfplanner;
 
-void visualizeMarker(ros::Publisher& marker_pub, const Eigen::Vector3d& position, int id, const std::string& ns,
+void visualizeMarker(ros::Publisher& marker_pub, const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation, int id, const std::string& ns,
                      const std::string& frame_id, double scale, double r, double g, double b, double a, int type = visualization_msgs::Marker::SPHERE) {
     visualization_msgs::Marker marker;
     marker.header.frame_id = frame_id;
@@ -27,14 +27,15 @@ void visualizeMarker(ros::Publisher& marker_pub, const Eigen::Vector3d& position
     marker.pose.position.x = position.x();
     marker.pose.position.y = position.y();
     marker.pose.position.z = position.z();
-    marker.pose.orientation.x = 0.0;
-    marker.pose.orientation.y = 0.0;
-    marker.pose.orientation.z = 0.0;
-    marker.pose.orientation.w = 1.0;
+    marker.pose.orientation.x = orientation.x();
+    marker.pose.orientation.y = orientation.y();
+    marker.pose.orientation.z = orientation.z();
+    marker.pose.orientation.w = orientation.w();
     marker_pub.publish(marker);
 }
 
-void publishAgentFrame(tf2_ros::TransformBroadcaster& tf_broadcaster, const Eigen::Vector3d& position) {
+void publishAgentFrame(tf2_ros::TransformBroadcaster& tf_broadcaster, const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation) 
+{
     geometry_msgs::TransformStamped transform;
     transform.header.stamp = ros::Time::now();
     transform.header.frame_id = "map";
@@ -43,18 +44,43 @@ void publishAgentFrame(tf2_ros::TransformBroadcaster& tf_broadcaster, const Eige
     transform.transform.translation.x = position.x();
     transform.transform.translation.y = position.y();
     transform.transform.translation.z = position.z();
-    transform.transform.rotation.x = 0.0;
-    transform.transform.rotation.y = 0.0;
-    transform.transform.rotation.z = 0.0;
-    transform.transform.rotation.w = 1.0;
+    transform.transform.rotation.x = orientation.x();
+    transform.transform.rotation.y = orientation.y();
+    transform.transform.rotation.z = orientation.z();
+    transform.transform.rotation.w = orientation.w();
 
     tf_broadcaster.sendTransform(transform);
 }
+
+void publishFrame(tf2_ros::TransformBroadcaster& tf_broadcaster, const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation, const std::string& frame_id) 
+{
+    geometry_msgs::TransformStamped transform;
+    transform.header.stamp = ros::Time::now();
+    transform.header.frame_id = "map";         
+    transform.child_frame_id = frame_id;       
+
+    transform.transform.translation.x = position.x();
+    transform.transform.translation.y = position.y();
+    transform.transform.translation.z = position.z();
+
+    transform.transform.rotation.x = orientation.x();
+    transform.transform.rotation.y = orientation.y();
+    transform.transform.rotation.z = orientation.z();
+    transform.transform.rotation.w = orientation.w();
+
+    tf_broadcaster.sendTransform(transform);
+}
+
 
 Eigen::Vector3d readVector3d(const YAML::Node& node) 
 {
     auto vec = node.as<std::vector<double>>();
     return Eigen::Vector3d(vec[0], vec[1], vec[2]);
+}
+
+Eigen::Quaterniond readQuaternion(const YAML::Node& node) {
+    auto quat = node.as<std::vector<double>>();
+    return Eigen::Quaterniond(quat[0], quat[1], quat[2], quat[3]);
 }
 
 std::vector<Obstacle> readObstacles(const YAML::Node& node) 
@@ -107,14 +133,19 @@ int main(int argc, char** argv) {
     // Read from YAML files
     std::string package_path = ros::package::getPath("multi_agent_vector_fields");
     YAML::Node start_goal = YAML::LoadFile(package_path + "/config/start_goal.yaml");
-    YAML::Node obstacles_yaml = YAML::LoadFile(package_path + "/config/obstacles_2.yaml");
+    YAML::Node obstacles_yaml = YAML::LoadFile(package_path + "/config/obstacles_1.yaml");
     YAML::Node agent_parameters = YAML::LoadFile(package_path + "/config/agent_parameters.yaml");
 
     Eigen::Vector3d start_pos = readVector3d(start_goal["start_pos"]);
     Eigen::Vector3d goal_pos = readVector3d(start_goal["goal_pos"]);
+    Eigen::Quaterniond start_orientation = readQuaternion(start_goal["start_orientation"]);
+    Eigen::Quaterniond goal_orientation = readQuaternion(start_goal["goal_orientation"]);
 
     ROS_INFO("Start position: [%.2f, %.2f, %.2f]", start_pos.x(), start_pos.y(), start_pos.z());
     ROS_INFO("Goal position: [%.2f, %.2f, %.2f]", goal_pos.x(), goal_pos.y(), goal_pos.z());
+    ROS_INFO("Start orientation: [%.2f, %.2f, %.2f, %.2f]", start_orientation.w(), start_orientation.x(), start_orientation.y(), start_orientation.z());
+    ROS_INFO("Goal orientation: [%.2f, %.2f, %.2f, %.2f]", goal_orientation.w(), goal_orientation.x(), goal_orientation.y(), goal_orientation.z());
+
 
     std::vector<Obstacle> obstacles = readObstacles(obstacles_yaml["obstacles"]);
     for (const auto& obs : obstacles)
@@ -142,7 +173,7 @@ int main(int argc, char** argv) {
     ROS_INFO("----------------------------------");
     
 
-    CfManager cf_manager(start_pos, goal_pos, 0.1, obstacles, k_a_ee, k_c_ee, k_r_ee, k_d_ee, k_r_force, k_manip);
+    CfManager cf_manager(start_pos, goal_pos, 0.1, obstacles, k_a_ee, k_c_ee, k_r_ee, k_d_ee, k_r_force, k_manip, start_orientation, goal_orientation);
 
     ros::Rate rate(10);
     bool planning_active = true;
@@ -167,8 +198,8 @@ int main(int argc, char** argv) {
             double start_plan_timestamp = ros::Time::now().toSec();
 
             // visual goal and start 
-            visualizeMarker(marker_pub, start_pos, 0, "cf_agent_demo", "map", 0.5, 0.0, 1.0, 0.0, 1.0);
-            visualizeMarker(marker_pub, goal_pos, 1, "cf_agent_demo", "map", 0.5, 1.0, 0.0, 0.0, 1.0);
+            visualizeMarker(marker_pub, start_pos,start_orientation, 0, "cf_agent_demo", "map", 0.5, 0.0, 1.0, 0.0, 1.0);
+            visualizeMarker(marker_pub, goal_pos , goal_orientation, 1, "cf_agent_demo", "map", 0.5, 1.0, 0.0, 0.0, 1.0);
 
             for (auto& obs : obstacles) 
             {
@@ -191,7 +222,7 @@ int main(int argc, char** argv) {
             // visual obstacles 
             for (size_t i = 0; i < obstacles.size(); ++i) 
             {
-                visualizeMarker(marker_pub, obstacles[i].getPosition(), static_cast<int>(i + 10),
+                visualizeMarker(marker_pub, obstacles[i].getPosition(),Eigen::Quaterniond::Identity(), static_cast<int>(i + 10),
                                 "cf_agent_demo_obstacles", "map", obstacles[i].getRadius() * 2.0,
                                 0.6, 0.2, 0.1, 1.0);
             }
@@ -243,13 +274,16 @@ int main(int argc, char** argv) {
             }
 
             Eigen::Vector3d current_agent_pos = cf_manager.getNextPosition();
-            ROS_INFO("Current agent position: [%.2f, %.2f, %.2f]", current_agent_pos.x(), current_agent_pos.y(), current_agent_pos.z());
+            ROS_INFO("Current position: [%.2f, %.2f, %.2f]", current_agent_pos.x(), current_agent_pos.y(), current_agent_pos.z());
+            
+            Eigen::Quaterniond current_agent_orientation = cf_manager.getNextOrientation();
+            ROS_INFO("Current orientation: [w=%.2f, x=%.2f, y=%.2f, z=%.2f]",current_agent_orientation.w(), current_agent_orientation.x(),
+                                                                             current_agent_orientation.y(), current_agent_orientation.z());
+            //visual current agent
+            visualizeMarker(marker_pub, current_agent_pos,Eigen::Quaterniond::Identity() ,100, "cf_agent_demo_agents", "map", 0.2, 1.0, 1.0, 0.0, 1.0);
 
-            // visual current agent
-            visualizeMarker(marker_pub, current_agent_pos, 100, "cf_agent_demo_agents", "map", 0.2, 1.0, 1.0, 0.0, 1.0);
 
-
-            // upgrade real traj
+            // update real traj
             geometry_msgs::Point trajectory_point;
             trajectory_point.x = current_agent_pos.x();
             trajectory_point.y = current_agent_pos.y();
@@ -258,9 +292,11 @@ int main(int argc, char** argv) {
             trajectory_marker.pose.orientation.w = 1.0;
             marker_pub.publish(trajectory_marker);
 
-
+            // Goal/Start Frame 
+            publishFrame(tf_broadcaster, start_pos, start_orientation, "start_frame");
+            publishFrame(tf_broadcaster, goal_pos, goal_orientation, "goal_frame");
             // TF Frame 
-            publishAgentFrame(tf_broadcaster, current_agent_pos);
+            publishAgentFrame(tf_broadcaster, current_agent_pos,current_agent_orientation);
 
             // move Real Agent 
             cf_manager.moveRealEEAgent(obstacles, 0.1, 1, best_agent_id);
@@ -269,7 +305,7 @@ int main(int argc, char** argv) {
             //ROS_INFO("After moveRealEEAgent, position: [%.2f, %.2f, %.2f]", updated_position.x(), updated_position.y(), updated_position.z());
 
             double end_plan_timestamp = ros::Time::now().toSec();
-            ROS_INFO("Planning time: %.3f seconds", end_plan_timestamp - start_plan_timestamp);
+            //ROS_INFO("Planning time: %.3f seconds", end_plan_timestamp - start_plan_timestamp);
 
             // next circle 
             cf_manager.resetEEAgents(updated_position, cf_manager.getNextVelocity(), obstacles);
@@ -295,9 +331,11 @@ int main(int argc, char** argv) {
             twist_msg.twist.linear.x = current_velocity.x();
             twist_msg.twist.linear.y = current_velocity.y();
             twist_msg.twist.linear.z = current_velocity.z();
-            twist_msg.twist.angular.x = 0.0;
-            twist_msg.twist.angular.y = 0.0;
-            twist_msg.twist.angular.z = 0.0;
+
+            Eigen::Vector3d current_angular_velocity = cf_manager.getNextAngularVelocity();
+            twist_msg.twist.angular.x = current_angular_velocity.x();
+            twist_msg.twist.angular.y = current_angular_velocity.y();
+            twist_msg.twist.angular.z = current_angular_velocity.z();
             twist_pub.publish(twist_msg);
         } 
         else 

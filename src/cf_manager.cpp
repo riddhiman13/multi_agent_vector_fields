@@ -19,6 +19,8 @@ CfManager::CfManager(
     const std::vector<double> &k_a_ee, const std::vector<double> &k_c_ee,
     const std::vector<double> &k_r_ee, const std::vector<double> &k_d_ee,
     const std::vector<double> &k_manip, const std::vector<double> &k_r_force,
+    const Eigen::Quaterniond& start_orientation,
+    const Eigen::Quaterniond& goal_orientation,
     const double velocity_max, const double approach_dist,
     const double detect_shell_rad, const size_t max_prediction_steps,
     const size_t prediction_freq_multiple, const double agent_mass,
@@ -33,10 +35,10 @@ CfManager::CfManager(
       run_prediction_{false},
       approach_dist_{approach_dist},
       real_ee_agent_(0, agent_pos, goal_pos, detect_shell_rad, agent_mass,
-                     radius, velocity_max, approach_dist, obstacles.size()) 
+                     radius, velocity_max, approach_dist, obstacles.size(),start_orientation,goal_orientation) 
 {
   init(goal_pos, delta_t, obstacles, k_a_ee, k_c_ee, k_r_ee, k_d_ee, k_manip,
-       k_r_force, velocity_max, approach_dist, detect_shell_rad);
+       k_r_force, velocity_max, approach_dist, detect_shell_rad,start_orientation,goal_orientation);
 };
 
 void CfManager::init(
@@ -46,6 +48,8 @@ void CfManager::init(
     const std::vector<double> &k_d_ee, const std::vector<double> &k_manip,
     const std::vector<double> &k_r_force, const double velocity_max,
     const double approach_dist, const double detect_shell_rad,
+    const Eigen::Quaterniond& start_orientation, // for orientation
+    const Eigen::Quaterniond& goal_orientation,  
     const size_t max_prediction_steps, const size_t prediction_freq_multiple,
     const double agent_mass, const double radius) {
   assert((k_a_ee.size() == k_c_ee.size()) && (k_c_ee.size() == k_r_ee.size()) &&
@@ -66,45 +70,45 @@ void CfManager::init(
 
   real_ee_agent_ =
       RealCfAgent(0, init_pos_, goal_pos, detect_shell_rad, agent_mass, radius,
-                  velocity_max, approach_dist, obstacle_size);
+                  velocity_max, approach_dist, obstacle_size,start_orientation,goal_orientation);
 
   ee_agents_.push_back(std::make_unique<HadHeuristicCfAgent>(
       ee_agents_.size() + 1, init_pos_, goal_pos, detect_shell_rad, agent_mass,
-      radius, velocity_max, approach_dist, obstacle_size, obstacles));
+      radius, velocity_max, approach_dist, obstacle_size, obstacles, start_orientation, goal_orientation));
 
   if (k_a_ee.size() > ee_agents_.size()) 
   {
     ee_agents_.push_back(std::make_unique<GoalHeuristicCfAgent>(
         ee_agents_.size() + 1, init_pos_, goal_pos, detect_shell_rad,
         agent_mass, radius, velocity_max, approach_dist, obstacle_size,
-        obstacles));
+        obstacles, start_orientation, goal_orientation));
   }
   if (k_a_ee.size() > ee_agents_.size()) 
   {
     ee_agents_.push_back(std::make_unique<ObstacleHeuristicCfAgent>(
         ee_agents_.size() + 1, init_pos_, goal_pos, detect_shell_rad,
         agent_mass, radius, velocity_max, approach_dist, obstacle_size,
-        obstacles));
+        obstacles, start_orientation, goal_orientation));
   }
   if (k_a_ee.size() > ee_agents_.size()) 
   {
     ee_agents_.push_back(std::make_unique<GoalObstacleHeuristicCfAgent>(
         ee_agents_.size() + 1, init_pos_, goal_pos, detect_shell_rad,
         agent_mass, radius, velocity_max, approach_dist, obstacle_size,
-        obstacles));
+        obstacles, start_orientation, goal_orientation));
   }
   if (k_a_ee.size() > ee_agents_.size()) 
   {
     ee_agents_.push_back(std::make_unique<VelHeuristicCfAgent>(
         ee_agents_.size() + 1, init_pos_, goal_pos, detect_shell_rad,
         agent_mass, radius, velocity_max, approach_dist, obstacle_size,
-        obstacles));
+        obstacles, start_orientation, goal_orientation));
   }
   for (size_t i = ee_agents_.size(); i < k_a_ee.size(); ++i) {
     ee_agents_.push_back(std::make_unique<RandomCfAgent>(
         ee_agents_.size() + 1, init_pos_, goal_pos, detect_shell_rad,
         agent_mass, radius, velocity_max, approach_dist, obstacle_size,
-        obstacles));
+        obstacles, start_orientation, goal_orientation));
   }
     
   Vector3d zeros{0.0, 0.0, 0.0};
@@ -113,7 +117,7 @@ void CfManager::init(
     force_agents_.push_back(std::make_unique<GoalHeuristicCfAgent>(
         force_agents_.size() + ee_agents_.size() + 1, init_pos_, goal_pos,
         detect_shell_rad, agent_mass, radius, velocity_max, approach_dist,
-        obstacle_size, obstacles));
+        obstacle_size, obstacles, start_orientation, goal_orientation));
   }
 
   int dim_size = 60;
@@ -335,6 +339,7 @@ Eigen::Vector3d CfManager::getRealEEAgentPosition() const
 {
     return real_ee_agent_.getLatestPosition();
 }
+
 
 int CfManager::evaluateAgents(const vector<Obstacle> &obstacles,
                               const double k_goal_dist, const double k_path_len,
