@@ -28,5 +28,11 @@ Change path name of `obstacles_X.yaml` in `main()` in `main.cpp` and rebuild the
 
 ![image](https://github.com/user-attachments/assets/f2647f36-f48c-44f3-b5bb-559ca8ee0bf4)
 
+### Updated History
+`28.12.2024`: First with Multi-agent(4) version
 
+`29.12.2024`: Add launch file and twists publisher
 
+`02.01.2025`: Add new agents(7) and change obstacle description
+
+`04.01.2025`: Add rotational part in force attractor and combine the two parts to the twist
