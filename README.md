@@ -1,5 +1,5 @@
 # multi_agent_vector_fields
-## Circular Fields based (global) motion planner
+## Circular Fields based (almost global) motion planner
 
 ### Used Agents:
    1. `REAL_AGENT`
