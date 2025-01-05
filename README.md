@@ -8,7 +8,6 @@
    4. `GOAL_OBSTACLE_HEURISTIC`
    5. `VEL_HEURISTIC`
    6. `RANDOM_AGENT`
-   7. `HAD_HEURISTIC`
 
 ### In order to run it:
 
