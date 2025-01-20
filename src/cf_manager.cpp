@@ -21,8 +21,8 @@ CfManager::CfManager(
     const std::vector<double> &k_manip, const std::vector<double> &k_r_force,
     const Eigen::Quaterniond& start_orientation,
     const Eigen::Quaterniond& goal_orientation,
-    const double velocity_max, const double approach_dist,
-    const double detect_shell_rad, const size_t max_prediction_steps,
+    const double velocity_max, const double detect_shell_rad,
+    const double approach_dist, const size_t max_prediction_steps,
     const size_t prediction_freq_multiple, const double agent_mass,
     const double radius)
     : goal_pos_(goal_pos),
@@ -54,7 +54,6 @@ void CfManager::init(
     const double agent_mass, const double radius) {
   assert((k_a_ee.size() == k_c_ee.size()) && (k_c_ee.size() == k_r_ee.size()) &&
          (k_c_ee.size() == k_manip.size()));
-
   joinPredictionThreads();
   ee_agents_.clear();
   goal_pos_ = goal_pos;
