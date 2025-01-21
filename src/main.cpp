@@ -173,7 +173,14 @@ int main(int argc, char** argv) {
     ROS_INFO("----------------------------------");
     
 
-    CfManager cf_manager(start_pos, goal_pos, 0.1, obstacles, k_a_ee, k_c_ee, k_r_ee, k_d_ee, k_r_force, k_manip, start_orientation, goal_orientation);
+    CfManager cf_manager(start_pos, goal_pos, 
+                        0.1, obstacles, 
+                        k_a_ee, k_c_ee, 
+                        k_r_ee, k_d_ee, 
+                        k_manip, k_r_force, 
+                        start_orientation, 
+                        goal_orientation,
+                        velocity_max, detect_shell_rad);
 
     ros::Rate rate(10);
     bool planning_active = true;
@@ -192,14 +199,14 @@ int main(int argc, char** argv) {
     trajectory_marker.color.b = 0.0;
     trajectory_marker.color.a = 1.0;
 
-
+    
     while (ros::ok()) {
         if (planning_active) {
             double start_plan_timestamp = ros::Time::now().toSec();
 
             // visual goal and start 
-            visualizeMarker(marker_pub, start_pos,start_orientation, 0, "cf_agent_demo", "map", 0.5, 0.0, 1.0, 0.0, 1.0);
-            visualizeMarker(marker_pub, goal_pos , goal_orientation, 1, "cf_agent_demo", "map", 0.5, 1.0, 0.0, 0.0, 1.0);
+            visualizeMarker(marker_pub, start_pos,start_orientation, 0, "cf_agent_demo", "map", 0.05, 0.0, 1.0, 0.0, 1.0);
+            visualizeMarker(marker_pub, goal_pos , goal_orientation, 1, "cf_agent_demo", "map", 0.05, 1.0, 0.0, 0.0, 1.0);
 
             for (auto& obs : obstacles) 
             {
