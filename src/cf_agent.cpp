@@ -203,7 +203,7 @@ void CfAgent::attractorForce(const double k_attr, const double k_damp, const dou
   {
     return;
   }
-  // --- rotational part ---
+  // --- linear part ---
   Eigen::Vector3d goal_vec{g_pos_ - getLatestPosition()};
   Eigen::Vector3d vel_des = k_attr / k_damp * goal_vec;
   double scale_lim = std::min(1.0, vel_max_ / vel_des.norm());
@@ -214,8 +214,10 @@ void CfAgent::attractorForce(const double k_attr, const double k_damp, const dou
   Eigen::Quaterniond error_quaternion = goal_orientation_ * current_orientation_.conjugate();
   Eigen::Vector3d error_vector = error_quaternion.vec(); //
   //ROS_INFO("error_vector: x=%.2f, y=%.2f, z=%.2f", error_vector.x(), error_vector.y(), error_vector.z());
-
-  Eigen::Vector3d desired_angular_velocity = (k_attr / k_damp) * error_vector;
+  
+  double gain = 0.5 ; // tune the value of gain for avoiding orientation oscillation
+  Eigen::Vector3d desired_angular_velocity = gain * (k_attr / k_damp) * error_vector;
+  
   double max_angular_velocity = 1.0; 
   double scaling_factor = std::min(1.0, max_angular_velocity / desired_angular_velocity.norm());
   desired_angular_velocity *= scaling_factor;  // one by one like the paper 
