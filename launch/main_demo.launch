@@ -2,7 +2,7 @@
     <node name="main_node" pkg="multi_agent_vector_fields" type="main_node" output="screen">
         
         <param name="start_goal_path" value="$(find multi_agent_vector_fields)/config/start_goal.yaml"/>
-        <param name="obstacles_path" value="$(find multi_agent_vector_fields)/config/obstacles.yaml"/>
+        <param name="obstacles_path" value="$(find multi_agent_vector_fields)/config/obstacles_1.yaml"/>
         <param name="agent_parameters_path" value="$(find multi_agent_vector_fields)/config/agent_parameters.yaml"/>
     </node>
 

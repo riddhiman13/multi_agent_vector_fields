@@ -22,9 +22,9 @@ CfManager::CfManager(
     const Eigen::Quaterniond& start_orientation,
     const Eigen::Quaterniond& goal_orientation,
     const double velocity_max, const double detect_shell_rad,
+    const double agent_mass, const double radius,
     const double approach_dist, const size_t max_prediction_steps,
-    const size_t prediction_freq_multiple, const double agent_mass,
-    const double radius)
+    const size_t prediction_freq_multiple)
     : goal_pos_(goal_pos),
       k_a_ee_{k_a_ee},
       k_c_ee_{k_c_ee},

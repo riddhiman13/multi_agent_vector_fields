@@ -101,15 +101,16 @@ std::vector<Obstacle> readObstacles(const YAML::Node& node)
 
 
 void readAgentParameters(const YAML::Node& node, double& detect_shell_rad, double& agent_mass,
-                         double& agent_radius, double& velocity_max, std::vector<double>& k_a_ee,
-                         std::vector<double>& k_c_ee, std::vector<double>& k_r_ee,
-                         std::vector<double>& k_r_force, std::vector<double>& k_d_ee,
-                         std::vector<double>& k_manip) 
+                         double& agent_radius, double& velocity_max, double& approach_dist,
+                         std::vector<double>& k_a_ee, std::vector<double>& k_c_ee, 
+                         std::vector<double>& k_r_ee, std::vector<double>& k_r_force, 
+                         std::vector<double>& k_d_ee, std::vector<double>& k_manip) 
 {
     detect_shell_rad = node["detect_shell_rad"].as<double>();
     agent_mass = node["agent_mass"].as<double>();
     agent_radius = node["agent_radius"].as<double>();
     velocity_max = node["velocity_max"].as<double>();
+    approach_dist = node["approach_dist"].as<double>();
     k_a_ee = node["k_a_ee"].as<std::vector<double>>();
     k_c_ee = node["k_c_ee"].as<std::vector<double>>();
     k_r_ee = node["k_r_ee"].as<std::vector<double>>();
@@ -154,9 +155,9 @@ int main(int argc, char** argv) {
                  obs.getPosition().x(), obs.getPosition().y(), obs.getPosition().z(), obs.getRadius());
     }
 
-    double detect_shell_rad, agent_mass, agent_radius, velocity_max;
+    double detect_shell_rad, agent_mass, agent_radius, velocity_max, approach_dist;
     std::vector<double> k_a_ee, k_c_ee, k_r_ee, k_r_force, k_d_ee, k_manip;
-    readAgentParameters(agent_parameters, detect_shell_rad, agent_mass, agent_radius, velocity_max,
+    readAgentParameters(agent_parameters, detect_shell_rad, agent_mass, agent_radius, velocity_max, approach_dist,
                         k_a_ee, k_c_ee, k_r_ee, k_r_force, k_d_ee, k_manip);
 
     ROS_INFO("Agent Parameters:");
@@ -180,7 +181,8 @@ int main(int argc, char** argv) {
                         k_manip, k_r_force, 
                         start_orientation, 
                         goal_orientation,
-                        velocity_max, detect_shell_rad);
+                        velocity_max, detect_shell_rad,
+                        agent_mass, agent_radius);
 
     ros::Rate rate(10);
     bool planning_active = true;
@@ -287,7 +289,7 @@ int main(int argc, char** argv) {
             ROS_INFO("Current orientation: [w=%.2f, x=%.2f, y=%.2f, z=%.2f]",current_agent_orientation.w(), current_agent_orientation.x(),
                                                                              current_agent_orientation.y(), current_agent_orientation.z());
             //visual current agent
-            visualizeMarker(marker_pub, current_agent_pos,Eigen::Quaterniond::Identity() ,100, "cf_agent_demo_agents", "map", 0.2, 1.0, 1.0, 0.0, 1.0);
+            visualizeMarker(marker_pub, current_agent_pos,Eigen::Quaterniond::Identity() ,100, "cf_agent_demo_agents", "map", agent_radius, 1.0, 1.0, 0.0, 1.0);
 
 
             // update real traj
