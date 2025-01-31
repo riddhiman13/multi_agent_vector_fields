@@ -34,23 +34,25 @@ class CfManager {
   double approach_dist_;
 
  public:
-  CfManager(const Eigen::Vector3d agent_pos, 
-            const Eigen::Vector3d goal_pos,
-            const double delta_t, 
-            const std::vector<Obstacle> &obstacles,
-            const std::vector<double> &k_a_ee,
-            const std::vector<double> &k_c_ee,
-            const std::vector<double> &k_r_ee,
-            const std::vector<double> &k_d_ee,
-            const std::vector<double> &k_manip,
-            const std::vector<double> &k_r_force,
-            const Eigen::Quaterniond& start_orientation,
-            const Eigen::Quaterniond& goal_orientation,
-            const double velocity_max = 0.5, const double approach_dist = 0.25,
-            const double detect_shell_rad = 0.8,
-            const size_t max_prediction_steps = 1500,
-            const size_t prediction_freq_multiple = 1,
-            const double agent_mass = 1.0, const double radius = 0.01);
+ CfManager(const Eigen::Vector3d agent_pos, 
+          const Eigen::Vector3d goal_pos,
+          const double delta_t, 
+          const std::vector<Obstacle> &obstacles,
+          const std::vector<double> &k_a_ee,
+          const std::vector<double> &k_c_ee,
+          const std::vector<double> &k_r_ee,
+          const std::vector<double> &k_d_ee,
+          const std::vector<double> &k_manip,
+          const std::vector<double> &k_r_force,
+          const Eigen::Quaterniond& start_orientation,
+          const Eigen::Quaterniond& goal_orientation,
+          const double velocity_max = 0.5, 
+          const double detect_shell_rad = 0.8,
+          const double agent_mass = 1.0, 
+          const double radius = 0.01,
+          const double approach_dist = 0.25, 
+          const size_t max_prediction_steps = 1500,
+          const size_t prediction_freq_multiple = 1);
   CfManager() = default;
   ~CfManager() { joinPredictionThreads(); };
   CfManager(const CfManager &) = default;
