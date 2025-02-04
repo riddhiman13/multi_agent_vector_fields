@@ -2,6 +2,7 @@ detect_shell_rad: 0.2
 agent_mass: 1.0
 agent_radius: 0.2
 velocity_max: 1.0
+approach_dist: 0.1
 k_a_ee:     [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]
 k_c_ee:     [2.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]
 k_r_ee:     [2.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]
