@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
   eigen_conversions
   roslib
+  moveit_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -46,6 +47,7 @@ catkin_package(
     tf2_geometry_msgs
     tf2_ros
     visualization_msgs
+    moveit_msgs
 )
 
 

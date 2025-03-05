@@ -8,8 +8,12 @@
 #include <ros/package.h>
 #include "multi_agent_vector_fields/cf_manager.h"
 #include "multi_agent_vector_fields/obstacle.h"
+#include <moveit_msgs/PlanningScene.h>
+#include <moveit_msgs/CollisionObject.h>
 
 using namespace ghostplanner::cfplanner;
+
+std::vector<Obstacle> obstacles;
 
 void visualizeMarker(ros::Publisher& marker_pub, const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation, int id, const std::string& ns,
                      const std::string& frame_id, double scale, double r, double g, double b, double a, int type = visualization_msgs::Marker::SPHERE) {
@@ -119,6 +123,32 @@ void readAgentParameters(const YAML::Node& node, double& detect_shell_rad, doubl
     k_manip = node["k_manip"].as<std::vector<double>>();
 }
 
+void planningSceneCallback(const moveit_msgs::PlanningScene::ConstPtr& msg) {
+    obstacles.clear();
+    for (const auto& obj : msg->world.collision_objects) {
+        if (obj.primitives.empty()) continue;
+
+        const auto& pose = obj.primitive_poses[0];
+        Eigen::Vector3d position(pose.position.x, pose.position.y, pose.position.z);
+        double radius = (obj.primitives[0].type == shape_msgs::SolidPrimitive::SPHERE) ? 
+                         obj.primitives[0].dimensions[0] : 0.5;
+
+        obstacles.emplace_back(obj.id, position, Eigen::Vector3d(0, 0, 0), radius, false, 0.0);
+    }
+
+    ROS_INFO("已从 /planning_scene 更新 %zu 个障碍物", obstacles.size());
+}
+
+void waitForFirstPlanningScene() {
+    ros::Rate rate(10);
+    while (ros::ok() && obstacles.empty()) {
+        ros::spinOnce();
+        ROS_INFO_THROTTLE(1, "Waiting for first planning_scene message...");
+        rate.sleep();
+    }
+}
+
+
 int main(int argc, char** argv) {
     ros::init(argc, argv, "cf_agent_demo");
     ros::NodeHandle nh;
@@ -134,7 +164,7 @@ int main(int argc, char** argv) {
     // Read from YAML files
     std::string package_path = ros::package::getPath("multi_agent_vector_fields");
     YAML::Node start_goal = YAML::LoadFile(package_path + "/config/start_goal.yaml");
-    YAML::Node obstacles_yaml = YAML::LoadFile(package_path + "/config/obstacles_1.yaml");
+    //YAML::Node obstacles_yaml = YAML::LoadFile(package_path + "/config/obstacles_1.yaml");
     YAML::Node agent_parameters = YAML::LoadFile(package_path + "/config/agent_parameters.yaml");
 
     Eigen::Vector3d start_pos = readVector3d(start_goal["start_pos"]);
@@ -148,7 +178,12 @@ int main(int argc, char** argv) {
     ROS_INFO("Goal orientation: [%.2f, %.2f, %.2f, %.2f]", goal_orientation.w(), goal_orientation.x(), goal_orientation.y(), goal_orientation.z());
 
 
-    std::vector<Obstacle> obstacles = readObstacles(obstacles_yaml["obstacles"]);
+    // std::vector<Obstacle> obstacles = readObstacles(obstacles_yaml["obstacles"]);
+    //std::vector<Obstacle> obstacles;
+
+    //TODO NEED subscirbe the topic Planning Scene and conver
+    ros::Subscriber planning_scene_sub = nh.subscribe("/planning_scene", 1, planningSceneCallback);
+    waitForFirstPlanningScene();  // 这里堵塞住，直到收到第一个障碍物数据
     for (const auto& obs : obstacles)
     {
         ROS_INFO("Obstacle: %s, Position: [%.2f, %.2f, %.2f], Radius: %.2f", obs.getName().c_str(),
@@ -202,7 +237,9 @@ int main(int argc, char** argv) {
     trajectory_marker.color.a = 1.0;
 
     
-    while (ros::ok()) {
+    while (ros::ok()) 
+    {
+        ros::spinOnce();
         if (planning_active) {
             double start_plan_timestamp = ros::Time::now().toSec();
 
@@ -210,34 +247,15 @@ int main(int argc, char** argv) {
             visualizeMarker(marker_pub, start_pos,start_orientation, 0, "cf_agent_demo", "map", 0.05, 0.0, 1.0, 0.0, 1.0);
             visualizeMarker(marker_pub, goal_pos , goal_orientation, 1, "cf_agent_demo", "map", 0.05, 1.0, 0.0, 0.0, 1.0);
 
-            for (auto& obs : obstacles) 
-            {
-            obs.updatePosition(0.1);  // for dynamics obstacles
-            // for (const auto& obs : obstacles) 
-            // {
-            //  ROS_INFO("Obstacle %s position: [%.2f, %.2f, %.2f]",
-            //  obs.getName().c_str(),
-            //  obs.getPosition().x(),
-            //  obs.getPosition().y(),
-            //  obs.getPosition().z());
-            //  ROS_INFO("Obstacle %s dynamic: %s, angular speed: %.2f",
-            //  obs.getName().c_str(),
-            //  obs.isDynamic() ? "true" : "false",
-            //  obs.getAngularSpeed());
-            // }
-
-            }
-
             // visual obstacles 
-            for (size_t i = 0; i < obstacles.size(); ++i) 
-            {
-                visualizeMarker(marker_pub, obstacles[i].getPosition(),Eigen::Quaterniond::Identity(), static_cast<int>(i + 10),
-                                "cf_agent_demo_obstacles", "map", obstacles[i].getRadius() * 2.0,
-                                0.6, 0.2, 0.1, 1.0);
+            for (size_t i = 0; i < obstacles.size(); ++i) {
+                visualizeMarker(marker_pub, obstacles[i].getPosition(), Eigen::Quaterniond::Identity(),
+                                static_cast<int>(i + 10), "cf_agent_demo_obstacles", "map", 
+                                obstacles[i].getRadius() * 2.0, 0.6, 0.2, 0.1, 1.0);
             }
-
             // Set Agents first pos
-            if (!open_loop) {
+            if (!open_loop) 
+            {
                 cf_manager.setRealEEAgentPosition(start_pos);
                 open_loop = true;
             }
@@ -353,7 +371,7 @@ int main(int argc, char** argv) {
             cf_manager.setInitialPosition(start_pos);
         }
 
-        ros::spinOnce();
+        
         rate.sleep();
     }
 

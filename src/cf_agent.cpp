@@ -195,6 +195,9 @@ void CfAgent::repelForce(const std::vector<Obstacle> &obstacles,
   }
     total_repel_force += repel_force;
     force_ += total_repel_force;
+    //ROS_ERROR("repel_force_: x=%.2f, y=%.2f, z=%.2f, magnitude=%.2f", total_repel_force.x(), total_repel_force.y(), total_repel_force.z(), total_repel_force.norm());
+
+    
 }
 
 void CfAgent::attractorForce(const double k_attr, const double k_damp, const double k_goal_scale) 
