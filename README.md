@@ -11,7 +11,11 @@
 
 ### In order to run it:
 
+`git clone https://github.com/hwyao/robot_env_publisher.git` for the obstacles publisher 
+
 `roslaunch multi_agent_vector_fields main_demo.launch`
+
+`roslaunch robot_env_publisher obstacles_publisher.launch`
 
 ### In order to switch between different obstacles scenarios:
 
