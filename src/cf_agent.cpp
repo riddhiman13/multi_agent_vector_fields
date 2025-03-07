@@ -96,6 +96,13 @@ void CfAgent::circForce(const std::vector<Obstacle> &obstacles,const double k_ci
       continue;
     }
     double dist_obs{robot_obstacle_vec.norm()-(rad_ + obstacles.at(i).getRadius())};
+    
+    // if (robot_obstacle_vec.norm() < 1e-6) {
+    //   ROS_ERROR("Obstacle overlaps with agent, skipping this force");
+    //   continue;
+    // }
+
+
     dist_obs = std::max(dist_obs, 1e-5);
     if (dist_obs < min_obs_dist_) 
     {
@@ -212,6 +219,8 @@ void CfAgent::attractorForce(const double k_attr, const double k_damp, const dou
   double scale_lim = std::min(1.0, vel_max_ / vel_des.norm());
   vel_des *= scale_lim;
   force_ += k_goal_scale * k_damp * (vel_des - vel_);
+  //ROS_ERROR("force_: x=%.2f, y=%.2f, z=%.2f, magnitude=%.2f", force_.x(), force_.y(), force_.z(), force_.norm());
+
 
   // --- rotational part ---
   Eigen::Quaterniond error_quaternion = goal_orientation_ * current_orientation_.conjugate();
@@ -279,6 +288,11 @@ Eigen::Vector3d CfAgent::bodyForce(const std::vector<Obstacle> &obstacles,
 void CfAgent::updatePositionAndVelocity(const double delta_t) 
 {
   // linear pary 
+//   if (std::isnan(force_.x()) || std::isnan(force_.y()) || std::isnan(force_.z())) {
+//     ROS_ERROR("Force contains NaN, skipping update!");
+//     return;
+// }
+
   Eigen::Vector3d robot_acc = force_ / mass_;
   double acc_norm = robot_acc.norm();
   if (acc_norm > 13.0) 

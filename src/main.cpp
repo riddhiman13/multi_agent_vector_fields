@@ -136,7 +136,7 @@ void planningSceneCallback(const moveit_msgs::PlanningScene::ConstPtr& msg) {
         obstacles.emplace_back(obj.id, position, Eigen::Vector3d(0, 0, 0), radius, false, 0.0);
     }
 
-    ROS_INFO("已从 /planning_scene 更新 %zu 个障碍物", obstacles.size());
+    ROS_INFO("Load %zu obstacles from topic", obstacles.size());
 }
 
 void waitForFirstPlanningScene() {
@@ -183,12 +183,13 @@ int main(int argc, char** argv) {
 
     //TODO NEED subscirbe the topic Planning Scene and conver
     ros::Subscriber planning_scene_sub = nh.subscribe("/planning_scene", 1, planningSceneCallback);
-    waitForFirstPlanningScene();  // 这里堵塞住，直到收到第一个障碍物数据
-    for (const auto& obs : obstacles)
+    waitForFirstPlanningScene(); 
+    /*for (const auto& obs : obstacles)
     {
         ROS_INFO("Obstacle: %s, Position: [%.2f, %.2f, %.2f], Radius: %.2f", obs.getName().c_str(),
                  obs.getPosition().x(), obs.getPosition().y(), obs.getPosition().z(), obs.getRadius());
     }
+    */
 
     double detect_shell_rad, agent_mass, agent_radius, velocity_max, approach_dist;
     std::vector<double> k_a_ee, k_c_ee, k_r_ee, k_r_force, k_d_ee, k_manip;
@@ -227,7 +228,7 @@ int main(int argc, char** argv) {
     visualization_msgs::Marker trajectory_marker;
     trajectory_marker.header.frame_id = "map";
     trajectory_marker.ns = "cf_agent_demo_trajectory";
-    trajectory_marker.id = 101;
+    trajectory_marker.id = 201;
     trajectory_marker.type = visualization_msgs::Marker::LINE_STRIP;
     trajectory_marker.action = visualization_msgs::Marker::ADD;
     trajectory_marker.scale.x = 0.1;
@@ -307,7 +308,7 @@ int main(int argc, char** argv) {
             ROS_INFO("Current orientation: [w=%.2f, x=%.2f, y=%.2f, z=%.2f]",current_agent_orientation.w(), current_agent_orientation.x(),
                                                                              current_agent_orientation.y(), current_agent_orientation.z());
             //visual current agent
-            visualizeMarker(marker_pub, current_agent_pos,Eigen::Quaterniond::Identity() ,100, "cf_agent_demo_agents", "map", agent_radius, 1.0, 1.0, 0.0, 1.0);
+            visualizeMarker(marker_pub, current_agent_pos,Eigen::Quaterniond::Identity() ,100, "cf_agent_demo_agents", "map", agent_radius*2, 1.0, 1.0, 0.0, 1.0);
 
 
             // update real traj
