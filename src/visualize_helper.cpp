@@ -32,7 +32,7 @@ void multi_agent_vector_fields::publishAgentFrame(tf2_ros::TransformBroadcaster 
 {
     geometry_msgs::TransformStamped transform;
     transform.header.stamp = ros::Time::now();
-    transform.header.frame_id = "map";
+    transform.header.frame_id = "world";
     transform.child_frame_id = "agent_frame";
 
     transform.transform.translation.x = position.x();
@@ -53,7 +53,7 @@ void multi_agent_vector_fields::publishFrame(tf2_ros::TransformBroadcaster &tf_b
 {
     geometry_msgs::TransformStamped transform;
     transform.header.stamp = ros::Time::now();
-    transform.header.frame_id = "map";
+    transform.header.frame_id = "world";
     transform.child_frame_id = frame_id;
 
     transform.transform.translation.x = position.x();
@@ -73,7 +73,7 @@ void multi_agent_vector_fields::publishPathMarker(const std::vector<Eigen::Vecto
                                                    ros::Publisher& marker_pub, int id, bool is_best_agent) 
 {
     visualization_msgs::Marker path_marker;
-    path_marker.header.frame_id = "map";
+    path_marker.header.frame_id = "world";
     path_marker.ns = "cf_agent_demo_paths";
     path_marker.id = id;
     path_marker.type = visualization_msgs::Marker::LINE_STRIP;

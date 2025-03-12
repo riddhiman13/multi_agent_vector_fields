@@ -184,7 +184,7 @@ int main(int argc, char** argv) {
 
     // Visualization for Real Traj 
     visualization_msgs::Marker trajectory_marker;
-    trajectory_marker.header.frame_id = "map";
+    trajectory_marker.header.frame_id = "world";
     trajectory_marker.ns = "cf_agent_demo_trajectory";
     trajectory_marker.id = 201;
     trajectory_marker.type = visualization_msgs::Marker::LINE_STRIP;
@@ -204,13 +204,13 @@ int main(int argc, char** argv) {
             double start_plan_timestamp = ros::Time::now().toSec();
 
             // visual goal and start 
-            multi_agent_vector_fields::visualizeMarker(marker_pub, start_pos,start_orientation, 0, "cf_agent_demo", "map", 0.05, 0.0, 1.0, 0.0, 1.0);
-            multi_agent_vector_fields::visualizeMarker(marker_pub, goal_pos , goal_orientation, 1, "cf_agent_demo", "map", 0.05, 1.0, 0.0, 0.0, 1.0);
+            multi_agent_vector_fields::visualizeMarker(marker_pub, start_pos,start_orientation, 0, "cf_agent_demo", "world", 0.05, 0.0, 1.0, 0.0, 1.0);
+            multi_agent_vector_fields::visualizeMarker(marker_pub, goal_pos , goal_orientation, 1, "cf_agent_demo", "world", 0.05, 1.0, 0.0, 0.0, 1.0);
 
             // visual obstacles 
             for (size_t i = 0; i < obstacles.size(); ++i) {
                 multi_agent_vector_fields::visualizeMarker(marker_pub, obstacles[i].getPosition(), Eigen::Quaterniond::Identity(),
-                                                            static_cast<int>(i + 10), "cf_agent_demo_obstacles", "map", 
+                                                            static_cast<int>(i + 10), "cf_agent_demo_obstacles", "world", 
                                                             obstacles[i].getRadius() * 2.0, 0.6, 0.2, 0.1, 1.0);
             }
             // Set Agents state when message in
@@ -241,7 +241,7 @@ int main(int argc, char** argv) {
             multi_agent_vector_fields::visualizeMarker(marker_pub, current_agent_pos,
                                                         Eigen::Quaterniond::Identity() ,
                                                         100, "cf_agent_demo_agents", 
-                                                        "map", agent_radius*2, 1.0, 1.0, 0.0, 1.0);
+                                                        "world", agent_radius*2, 1.0, 1.0, 0.0, 1.0);
             // update real traj
             geometry_msgs::Point trajectory_point;
             trajectory_point.x = current_agent_pos.x();
