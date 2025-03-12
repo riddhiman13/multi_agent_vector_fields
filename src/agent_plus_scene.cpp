@@ -1,80 +1,24 @@
 #include <ros/ros.h>
-#include <visualization_msgs/Marker.h>
+#include <ros/package.h>
 #include <tf2_ros/transform_broadcaster.h>
+
+#include <std_msgs/Float64.h>
+#include <visualization_msgs/Marker.h>
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/TwistStamped.h>
-#include <std_msgs/Float64.h>
-#include <yaml-cpp/yaml.h>
-#include <ros/package.h>
-#include "multi_agent_vector_fields/cf_manager.h"
-#include "multi_agent_vector_fields/obstacle.h"
+
 #include <moveit_msgs/PlanningScene.h>
 #include <moveit_msgs/CollisionObject.h>
+
+#include "multi_agent_vector_fields/cf_manager.h"
+#include "multi_agent_vector_fields/obstacle.h"
+#include "multi_agent_vector_fields/visualize_helper.h"
+
+#include <yaml-cpp/yaml.h>
 
 using namespace ghostplanner::cfplanner;
 
 std::vector<Obstacle> obstacles;
-
-void visualizeMarker(ros::Publisher& marker_pub, const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation, int id, const std::string& ns,
-                     const std::string& frame_id, double scale, double r, double g, double b, double a, int type = visualization_msgs::Marker::SPHERE) {
-    visualization_msgs::Marker marker;
-    marker.header.frame_id = frame_id;
-    marker.ns = ns;
-    marker.id = id;
-    marker.type = type;
-    marker.action = visualization_msgs::Marker::ADD;
-    marker.scale.x = marker.scale.y = marker.scale.z = scale;
-    marker.color.r = r;
-    marker.color.g = g;
-    marker.color.b = b;
-    marker.color.a = a;
-    marker.pose.position.x = position.x();
-    marker.pose.position.y = position.y();
-    marker.pose.position.z = position.z();
-    marker.pose.orientation.x = orientation.x();
-    marker.pose.orientation.y = orientation.y();
-    marker.pose.orientation.z = orientation.z();
-    marker.pose.orientation.w = orientation.w();
-    marker_pub.publish(marker);
-}
-
-void publishAgentFrame(tf2_ros::TransformBroadcaster& tf_broadcaster, const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation) 
-{
-    geometry_msgs::TransformStamped transform;
-    transform.header.stamp = ros::Time::now();
-    transform.header.frame_id = "map";
-    transform.child_frame_id = "agent_frame";
-
-    transform.transform.translation.x = position.x();
-    transform.transform.translation.y = position.y();
-    transform.transform.translation.z = position.z();
-    transform.transform.rotation.x = orientation.x();
-    transform.transform.rotation.y = orientation.y();
-    transform.transform.rotation.z = orientation.z();
-    transform.transform.rotation.w = orientation.w();
-
-    tf_broadcaster.sendTransform(transform);
-}
-
-void publishFrame(tf2_ros::TransformBroadcaster& tf_broadcaster, const Eigen::Vector3d& position, const Eigen::Quaterniond& orientation, const std::string& frame_id) 
-{
-    geometry_msgs::TransformStamped transform;
-    transform.header.stamp = ros::Time::now();
-    transform.header.frame_id = "map";         
-    transform.child_frame_id = frame_id;       
-
-    transform.transform.translation.x = position.x();
-    transform.transform.translation.y = position.y();
-    transform.transform.translation.z = position.z();
-
-    transform.transform.rotation.x = orientation.x();
-    transform.transform.rotation.y = orientation.y();
-    transform.transform.rotation.z = orientation.z();
-    transform.transform.rotation.w = orientation.w();
-
-    tf_broadcaster.sendTransform(transform);
-}
-
 
 Eigen::Vector3d readVector3d(const YAML::Node& node) 
 {
@@ -245,12 +189,12 @@ int main(int argc, char** argv) {
             double start_plan_timestamp = ros::Time::now().toSec();
 
             // visual goal and start 
-            visualizeMarker(marker_pub, start_pos,start_orientation, 0, "cf_agent_demo", "map", 0.05, 0.0, 1.0, 0.0, 1.0);
-            visualizeMarker(marker_pub, goal_pos , goal_orientation, 1, "cf_agent_demo", "map", 0.05, 1.0, 0.0, 0.0, 1.0);
+            multi_agent_vector_fields::visualizeMarker(marker_pub, start_pos,start_orientation, 0, "cf_agent_demo", "map", 0.05, 0.0, 1.0, 0.0, 1.0);
+            multi_agent_vector_fields::visualizeMarker(marker_pub, goal_pos , goal_orientation, 1, "cf_agent_demo", "map", 0.05, 1.0, 0.0, 0.0, 1.0);
 
             // visual obstacles 
             for (size_t i = 0; i < obstacles.size(); ++i) {
-                visualizeMarker(marker_pub, obstacles[i].getPosition(), Eigen::Quaterniond::Identity(),
+                multi_agent_vector_fields::visualizeMarker(marker_pub, obstacles[i].getPosition(), Eigen::Quaterniond::Identity(),
                                 static_cast<int>(i + 10), "cf_agent_demo_obstacles", "map", 
                                 obstacles[i].getRadius() * 2.0, 0.6, 0.2, 0.1, 1.0);
             }
@@ -308,7 +252,7 @@ int main(int argc, char** argv) {
             ROS_INFO("Current orientation: [w=%.2f, x=%.2f, y=%.2f, z=%.2f]",current_agent_orientation.w(), current_agent_orientation.x(),
                                                                              current_agent_orientation.y(), current_agent_orientation.z());
             //visual current agent
-            visualizeMarker(marker_pub, current_agent_pos,Eigen::Quaterniond::Identity() ,100, "cf_agent_demo_agents", "map", agent_radius*2, 1.0, 1.0, 0.0, 1.0);
+            multi_agent_vector_fields::visualizeMarker(marker_pub, current_agent_pos,Eigen::Quaterniond::Identity() ,100, "cf_agent_demo_agents", "map", agent_radius*2, 1.0, 1.0, 0.0, 1.0);
 
 
             // update real traj
@@ -321,10 +265,10 @@ int main(int argc, char** argv) {
             marker_pub.publish(trajectory_marker);
 
             // Goal/Start Frame 
-            publishFrame(tf_broadcaster, start_pos, start_orientation, "start_frame");
-            publishFrame(tf_broadcaster, goal_pos, goal_orientation, "goal_frame");
+            multi_agent_vector_fields::publishFrame(tf_broadcaster, start_pos, start_orientation, "start_frame");
+            multi_agent_vector_fields::publishFrame(tf_broadcaster, goal_pos, goal_orientation, "goal_frame");
             // TF Frame 
-            publishAgentFrame(tf_broadcaster, current_agent_pos,current_agent_orientation);
+            multi_agent_vector_fields::publishAgentFrame(tf_broadcaster, current_agent_pos,current_agent_orientation);
 
             // move Real Agent 
             cf_manager.moveRealEEAgent(obstacles, 0.1, 1, best_agent_id);
