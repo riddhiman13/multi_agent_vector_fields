@@ -55,6 +55,16 @@ void publishFrame(tf2_ros::TransformBroadcaster& tf_broadcaster,
                   const Eigen::Quaterniond& orientation, 
                   const std::string& frame_id);
 
+void publishPathMarker(const std::vector<Eigen::Vector3d>& path, 
+                    ros::Publisher& marker_pub, int id, bool is_best_agent);                   
+
+                    
+void publishPathMarkers(const std::vector<std::vector<Eigen::Vector3d>>& predicted_paths, 
+                        ros::Publisher& marker_pub, 
+                        int best_agent_id);
+
 } // namespace multi_agent_vector_fields
+
+
 
 #endif // MULTI_AGENT_VECTOR_FIELDS_VISUALIZE_HELPER_H

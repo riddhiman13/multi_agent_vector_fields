@@ -67,3 +67,45 @@ void multi_agent_vector_fields::publishFrame(tf2_ros::TransformBroadcaster &tf_b
 
     tf_broadcaster.sendTransform(transform);
 }
+
+
+void multi_agent_vector_fields::publishPathMarker(const std::vector<Eigen::Vector3d>& path, 
+                                                   ros::Publisher& marker_pub, int id, bool is_best_agent) 
+{
+    visualization_msgs::Marker path_marker;
+    path_marker.header.frame_id = "map";
+    path_marker.ns = "cf_agent_demo_paths";
+    path_marker.id = id;
+    path_marker.type = visualization_msgs::Marker::LINE_STRIP;
+    path_marker.action = visualization_msgs::Marker::ADD;
+    path_marker.scale.x = 0.04;
+    path_marker.color.r = is_best_agent ? 1.0 : 0.0;
+    path_marker.color.g = 0.2;
+    path_marker.color.b = is_best_agent ? 0.0 : 1.0;
+    path_marker.color.a = 1.0;
+    path_marker.pose.orientation.w = 1.0;
+
+    for (const Eigen::Vector3d& point : path) 
+    {
+        geometry_msgs::Point ros_point;
+        ros_point.x = point.x();
+        ros_point.y = point.y();
+        ros_point.z = point.z();
+        path_marker.points.push_back(ros_point);
+    }
+
+    marker_pub.publish(path_marker);
+}
+
+void multi_agent_vector_fields::publishPathMarkers(const std::vector<std::vector<Eigen::Vector3d>>& predicted_paths, 
+                                                   ros::Publisher& marker_pub, int best_agent_id) 
+{
+    for (size_t i = 0; i < predicted_paths.size(); ++i) 
+    {
+        const auto& path = predicted_paths[i];
+        if (path.size() > 2) 
+        {
+            publishPathMarker(path, marker_pub, static_cast<int>(i + 20), i == best_agent_id);
+        }
+    }
+}
