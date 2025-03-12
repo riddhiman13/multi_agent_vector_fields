@@ -31,7 +31,7 @@
     <exec_depend>message_runtime</exec_depend>
 
     <export>
-        <controller_interface plugin="${prefix}/dual_panda_costp_controller_plugin.xml" />
+       
     </export>
 
 </package>
