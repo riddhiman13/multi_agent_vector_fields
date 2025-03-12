@@ -78,7 +78,7 @@ void multi_agent_vector_fields::publishPathMarker(const std::vector<Eigen::Vecto
     path_marker.id = id;
     path_marker.type = visualization_msgs::Marker::LINE_STRIP;
     path_marker.action = visualization_msgs::Marker::ADD;
-    path_marker.scale.x = 0.04;
+    path_marker.scale.x = 0.01;
     path_marker.color.r = is_best_agent ? 1.0 : 0.0;
     path_marker.color.g = 0.2;
     path_marker.color.b = is_best_agent ? 0.0 : 1.0;
