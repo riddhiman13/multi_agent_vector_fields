@@ -1,5 +1,5 @@
 start_pos: [1.0, 0.8, 0.0]
-goal_pos:  [10.2,0.5, 0.8]
+goal_pos:  [0.1, 0.450, 0.55]
 start_orientation: [1.0, 0.0, 0.0, 0.0]
 #goal_orientation: [0.707, 0.0, 0.707, 0.0]
 goal_orientation: [0.96593, 0.25882, 0.0, 0.0]
