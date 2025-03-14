@@ -34,23 +34,6 @@ Eigen::Quaterniond readQuaternion(const YAML::Node& node) {
     return Eigen::Quaterniond(quat[0], quat[1], quat[2], quat[3]);
 }
 
-std::vector<Obstacle> readObstacles(const YAML::Node& node) 
-{
-    std::vector<Obstacle> obstacles;
-    for (const auto& obstacle : node) {
-        std::string name = obstacle["name"].as<std::string>();
-        Eigen::Vector3d position = readVector3d(obstacle["position"]);
-        Eigen::Vector3d velocity = readVector3d(obstacle["velocity"]);
-        double radius = obstacle["radius"].as<double>();
-        bool is_dynamic = obstacle["is_dynamic"].as<bool>();
-        double angular_speed = obstacle["angular_speed"] ? obstacle["angular_speed"].as<double>() : 0.0;
-
-        obstacles.emplace_back(name, position, velocity, radius, is_dynamic, angular_speed);
-    }
-    return obstacles;
-}
-
-
 void readAgentParameters(const YAML::Node& node, double& detect_shell_rad, double& agent_mass,
                          double& agent_radius, double& velocity_max, double& approach_dist,
                          std::vector<double>& k_a_ee, std::vector<double>& k_c_ee, 
@@ -183,36 +166,13 @@ int main(int argc, char** argv) {
     bool open_loop = false;
 
     // Visualization for Real Traj 
-    visualization_msgs::Marker trajectory_marker;
-    trajectory_marker.header.frame_id = "world";
-    trajectory_marker.ns = "cf_agent_demo_trajectory";
-    trajectory_marker.id = 201;
-    trajectory_marker.type = visualization_msgs::Marker::LINE_STRIP;
-    trajectory_marker.action = visualization_msgs::Marker::ADD;
-    trajectory_marker.scale.x = 0.1;
-    trajectory_marker.color.r = 1.0;
-    trajectory_marker.color.g = 1.0;
-    trajectory_marker.color.b = 0.0;
-    trajectory_marker.color.a = 1.0;
+    std::vector<Eigen::Vector3d> trajectory_history;
 
     cf_manager.setRealEEAgentPosition(start_pos);
 
     while (ros::ok()) 
     {
-        ros::spinOnce();
         if (planning_active) {
-            double start_plan_timestamp = ros::Time::now().toSec();
-
-            // visual goal and start 
-            multi_agent_vector_fields::visualizeMarker(marker_pub, start_pos,start_orientation, 0, "cf_agent_demo", "world", 0.05, 0.0, 1.0, 0.0, 1.0);
-            multi_agent_vector_fields::visualizeMarker(marker_pub, goal_pos , goal_orientation, 1, "cf_agent_demo", "world", 0.05, 1.0, 0.0, 0.0, 1.0);
-
-            // visual obstacles 
-            for (size_t i = 0; i < obstacles.size(); ++i) {
-                multi_agent_vector_fields::visualizeMarker(marker_pub, obstacles[i].getPosition(), Eigen::Quaterniond::Identity(),
-                                                            static_cast<int>(i + 10), "cf_agent_demo_obstacles", "world", 
-                                                            obstacles[i].getRadius() * 2.0, 0.6, 0.2, 0.1, 1.0);
-            }
             // Set Agents state when message in
             if (first_receive_TCP_pos)
             {
@@ -222,60 +182,54 @@ int main(int argc, char** argv) {
             // killed
             cf_manager.stopPrediction();
 
-            // evaluaaiton
+            // evaluaiton on best agent
             int best_agent_id = cf_manager.evaluateAgents(obstacles, 1.0, 1.0, 1.0, 1.0, Eigen::Matrix<double, 6, 1>::Zero());
-            ROS_INFO("Best agent ID: %d", best_agent_id);
 
-            // visual all paths
+            // retrieve the data
             const auto& predicted_paths = cf_manager.getPredictedPaths();
-            multi_agent_vector_fields::publishPathMarkers(predicted_paths, marker_pub, best_agent_id);
-
-
             Eigen::Vector3d current_agent_pos = cf_manager.getNextPosition();
-            ROS_INFO("Current position: [%.2f, %.2f, %.2f]", current_agent_pos.x(), current_agent_pos.y(), current_agent_pos.z());
-            
             Eigen::Quaterniond current_agent_orientation = cf_manager.getNextOrientation();
-            ROS_INFO("Current orientation: [w=%.2f, x=%.2f, y=%.2f, z=%.2f]",current_agent_orientation.w(), current_agent_orientation.x(),
-                                                                             current_agent_orientation.y(), current_agent_orientation.z());
-            //visual current agent
-            multi_agent_vector_fields::visualizeMarker(marker_pub, current_agent_pos,
-                                                        Eigen::Quaterniond::Identity() ,
-                                                        100, "cf_agent_demo_agents", 
-                                                        "world", agent_radius*2, 1.0, 1.0, 0.0, 1.0);
-            // update real traj
-            geometry_msgs::Point trajectory_point;
-            trajectory_point.x = current_agent_pos.x();
-            trajectory_point.y = current_agent_pos.y();
-            trajectory_point.z = current_agent_pos.z();
-            trajectory_marker.points.push_back(trajectory_point);
-            trajectory_marker.pose.orientation.w = 1.0;
-            
-            marker_pub.publish(trajectory_marker);
-
-            // Goal and Start Frame 
-            multi_agent_vector_fields::publishFrame(tf_broadcaster, start_pos, start_orientation, "start_frame");
-            multi_agent_vector_fields::publishFrame(tf_broadcaster, goal_pos, goal_orientation, "goal_frame");
-            // TF Frame 
-            multi_agent_vector_fields::publishAgentFrame(tf_broadcaster, current_agent_pos,current_agent_orientation);
+            trajectory_history.push_back(current_agent_pos);
 
             // move Real Agent 
             cf_manager.moveRealEEAgent(obstacles, 0.1, 1, best_agent_id);
-
             Eigen::Vector3d updated_position = cf_manager.getNextPosition();
-            //ROS_INFO("After moveRealEEAgent, position: [%.2f, %.2f, %.2f]", updated_position.x(), updated_position.y(), updated_position.z());
 
-            double end_plan_timestamp = ros::Time::now().toSec();
-            //ROS_INFO("Planning time: %.3f seconds", end_plan_timestamp - start_plan_timestamp);
-
-            // next circle 
+            // next iteration 
             cf_manager.resetEEAgents(updated_position, cf_manager.getNextVelocity(), obstacles);
             cf_manager.startPrediction();
 
+            /** visualize the data in RViz */
+            // visualize goal and start as sphere
+            //multi_agent_vector_fields::visualizeMarker(marker_pub, start_pos, start_orientation, 0, "multi_agent_condition", "world", 0.05, 0.0, 1.0, 0.0, 0.5);
+            //multi_agent_vector_fields::visualizeMarker(marker_pub, goal_pos , goal_orientation, 1, "multi_agent_condition", "world", 0.05, 1.0, 0.0, 0.0, 0.5);
+            multi_agent_vector_fields::visualizeMarker(marker_pub, current_agent_pos, Eigen::Quaterniond::Identity(), 100, "multi_agent_agent", 
+                                                                                                            "world", agent_radius*2, 1.0, 1.0, 0.0, 0.5);
+
+
+            // visualize goal, start and agent frame in tf 
+            multi_agent_vector_fields::publishFrame(tf_broadcaster, start_pos, start_orientation, "start_frame");
+            multi_agent_vector_fields::publishFrame(tf_broadcaster, goal_pos, goal_orientation, "goal_frame");
+            multi_agent_vector_fields::publishFrame(tf_broadcaster, current_agent_pos, current_agent_orientation, "agent_frame");
+
+            // visualize predicted and history path
+            multi_agent_vector_fields::publishMultiAgentPlannedPaths(marker_pub, predicted_paths, best_agent_id);
+            multi_agent_vector_fields::publishPathMarker(marker_pub, trajectory_history, 201, "world", "multi_agent_trajectory", 
+                                                        0.01, 1.0, 1.0, 0.0, 0.8);
+
+            // visualize obstacles 
+            for (size_t i = 0; i < obstacles.size(); ++i) {
+                multi_agent_vector_fields::visualizeMarker(marker_pub, obstacles[i].getPosition(), Eigen::Quaterniond::Identity(),
+                                                            static_cast<int>(i + 10), "multi_agent_obstacles", "world", 
+                                                            obstacles[i].getRadius() * 2.0, 0.6, 0.2, 0.1, 0.9);
+            }
+
+            /** publish the data as message */
             // post agent postion 
             geometry_msgs::Point pos_msg;
-            pos_msg.x = cf_manager.getNextPosition().x();
-            pos_msg.y = cf_manager.getNextPosition().y();
-            pos_msg.z = cf_manager.getNextPosition().z();
+            pos_msg.x = current_agent_pos.x();
+            pos_msg.y = current_agent_pos.y();
+            pos_msg.z = current_agent_pos.z();
             pos_pub.publish(pos_msg);
 
             // post distance
@@ -303,7 +257,8 @@ int main(int argc, char** argv) {
             ROS_INFO_STREAM("No active.");
             cf_manager.setInitialPosition(start_pos);
         }
-       
+
+        ros::spinOnce();
         rate.sleep();
     }
 
