@@ -101,7 +101,8 @@ int main(int argc, char** argv) {
     ros::Publisher marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 10);
     ros::Publisher pos_pub = nh.advertise<geometry_msgs::Point>("agent_position", 10);
     ros::Publisher dist_pub = nh.advertise<std_msgs::Float64>("distance_to_goal", 10);
-    ros::Publisher twist_pub = nh.advertise<geometry_msgs::TwistStamped>("agent_twist", 10); 
+    ros::Publisher twist_pub = nh.advertise<geometry_msgs::TwistStamped>("agent_twist_local", 10);
+    ros::Publisher twist_pub_2 = nh.advertise<geometry_msgs::TwistStamped>("agent_twist_global", 10); 
     tf2_ros::TransformBroadcaster tf_broadcaster;
 
     // Read from YAML files
@@ -262,6 +263,22 @@ int main(int argc, char** argv) {
             twist_msg.twist.angular.y = current_angular_velocity.y();
             twist_msg.twist.angular.z = current_angular_velocity.z();
             twist_pub.publish(twist_msg);
+
+            // post agent twists in global frame
+            // this is actually not really a twist "transformation". We only covert the twist for its orientation.
+            geometry_msgs::TwistStamped twist_msg_global;
+            Eigen::Vector3d current_velocity_global = current_agent_orientation.toRotationMatrix() * current_velocity;
+            twist_msg_global.header.stamp = ros::Time::now();
+            twist_msg_global.header.frame_id = "world";
+            twist_msg_global.twist.linear.x = current_velocity_global.x();
+            twist_msg_global.twist.linear.y = current_velocity_global.y();
+            twist_msg_global.twist.linear.z = current_velocity_global.z();
+
+            Eigen::Vector3d current_angular_velocity_global = current_agent_orientation.toRotationMatrix() * current_angular_velocity;
+            twist_msg_global.twist.angular.x = current_angular_velocity_global.x();
+            twist_msg_global.twist.angular.y = current_angular_velocity_global.y();
+            twist_msg_global.twist.angular.z = current_angular_velocity_global.z();
+            twist_pub_2.publish(twist_msg_global);
         } 
         else 
         {
