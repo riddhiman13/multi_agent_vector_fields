@@ -1,4 +1,4 @@
-detect_shell_rad: 0.01     # sensing range [m]
+detect_shell_rad: 0.05     # sensing range [m]
 agent_mass: 1.0      # agent mass [kg]
 agent_radius: 0.2      # agent size [m]
 velocity_max: 1.0      # max speed [m/s]
