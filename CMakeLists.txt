@@ -55,6 +55,8 @@ target_link_libraries(multi_agent_vector_fields
 add_executable(main_node src/agent_plus_scene.cpp)
 
 add_executable(test_node src/agent_plus_scene_status)
+
+add_executable(bench_node src/planner_benchmark.cpp)
 target_link_libraries(main_node
   multi_agent_vector_fields
   yaml-cpp
@@ -62,6 +64,12 @@ target_link_libraries(main_node
 )
 
 target_link_libraries(test_node
+  multi_agent_vector_fields
+  yaml-cpp
+  ${catkin_LIBRARIES}
+)
+
+target_link_libraries(bench_node
   multi_agent_vector_fields
   yaml-cpp
   ${catkin_LIBRARIES}
