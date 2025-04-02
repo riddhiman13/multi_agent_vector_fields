@@ -8,10 +8,12 @@
 #include <atomic>
 #include <thread>
 #include <vector>
+#include "helpers/ThreadPool.h"
 
 #include "multi_agent_vector_fields/cf_agent.h"
 #include "multi_agent_vector_fields/obstacle.h"
 #include "eigen3/Eigen/Dense"
+
 
 namespace ghostplanner {
 namespace cfplanner {
@@ -27,10 +29,19 @@ class CfManager {
   std::vector<double> k_manip_;
   std::vector<double> k_r_force_;
   std::vector<Eigen::Vector3d> manip_map_;
-  bool run_prediction_;
+  
+  // bool run_prediction_;
+  double delta_t_;
+  size_t max_prediction_steps_;
+  bool run_planning_;
+  ThreadPool pool_;
+  std::thread planning_thread_;
+  bool force_planning_stop_ = false;
+  // std::vector<std::thread> prediction_threads_;
+  
+
   Eigen::Vector3d init_pos_;
   Eigen::Vector3d goal_pos_;
-  std::vector<std::thread> prediction_threads_;
   double approach_dist_;
 
  public:
@@ -54,24 +65,33 @@ class CfManager {
           const size_t max_prediction_steps = 1500,
           const size_t prediction_freq_multiple = 1);
   CfManager() = default;
-  ~CfManager() { joinPredictionThreads(); };
+  // ~CfManager() { joinPredictionThreads(); };
+  ~CfManager() { stopPlanning(true); };
   CfManager(const CfManager &) = default;
   CfManager(CfManager &&) noexcept = default;
   CfManager &operator=(const CfManager &) = default;
   CfManager &operator=(CfManager &&) noexcept = default;
 
-  void startPrediction() {
-    for (auto &ee_agent : ee_agents_) {
-      ee_agent->startPrediction();
-    }
-  };
-  void stopPrediction();
-  void shutdownAllAgents() {
-    for (auto &ee_agent : ee_agents_) {
-      ee_agent->shutdownAgent();
-    }
-  };
-  void joinPredictionThreads();
+  // void startPrediction() {
+  //   for (auto &ee_agent : ee_agents_) {
+  //     ee_agent->startPrediction();
+  //   }
+  // };
+  // void stopPrediction();
+  // void shutdownAllAgents() {
+  //   for (auto &ee_agent : ee_agents_) {
+  //     ee_agent->shutdownAgent();
+  //   }
+  // };
+
+  // void predictObstacles(const double delta_t);
+  // void startPrediction();
+  // void stopPrediction();
+  // void shutdownAllAgents();
+  void startPlanning();
+  void stopPlanning(bool force_stop = false);
+
+  // void joinPredictionThreads();
   std::vector<std::vector<Eigen::Vector3d>> getPredictedPaths();
   std::vector<double> getPredictedPathLengths();
   std::vector<double> getPredictionTimes();

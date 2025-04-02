@@ -204,7 +204,7 @@ int main(int argc, char** argv) {
     
     while (ros::ok()) {
         if (planning_active) {
-            double start_plan_timestamp = ros::Time::now().toSec();
+            // double start_plan_timestamp = ros::Time::now().toSec();
 
             // visual goal and start 
             visualizeMarker(marker_pub, start_pos,start_orientation, 0, "cf_agent_demo", "map", 0.05, 0.0, 1.0, 0.0, 1.0);
@@ -243,7 +243,8 @@ int main(int argc, char** argv) {
             }
 
             // killed
-            cf_manager.stopPrediction();
+            // cf_manager.stopPrediction();
+            cf_manager.stopPlanning();
 
             // evaluaaiton
             int best_agent_id = cf_manager.evaluateAgents(obstacles, 1.0, 1.0, 1.0, 1.0, Eigen::Matrix<double, 6, 1>::Zero());
@@ -318,7 +319,8 @@ int main(int argc, char** argv) {
 
             // next circle 
             cf_manager.resetEEAgents(updated_position, cf_manager.getNextVelocity(), obstacles);
-            cf_manager.startPrediction();
+            // cf_manager.startPrediction();
+            cf_manager.startPlanning();
 
             // post agent postion 
             geometry_msgs::Point pos_msg;

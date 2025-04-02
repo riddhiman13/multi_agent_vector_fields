@@ -146,9 +146,9 @@ class CfAgent {
   double getMinObsDist() { return min_obs_dist_; };
   double getPredictionTime() { return prediction_time_; };
   bool getReachedGoal() { return reached_goal_; };
-  void startPrediction() { run_prediction_ = true; };
-  void stopPrediction() { run_prediction_ = false; };
-  void shutdownAgent() { finished_ = true; };
+  // void startPrediction() { run_prediction_ = true; };
+  // void stopPrediction() { run_prediction_ = false; };
+  // void shutdownAgent() { finished_ = true; };
   void resetMinObsDist() { min_obs_dist_ = detect_shell_rad_; };
   void setVelocity(const Eigen::Vector3d &velocity);
   void setObstacles(const std::vector<Obstacle> &obstacles,
@@ -172,11 +172,17 @@ class CfAgent {
                          const double k_repel, const double k_damp,
                          const double k_manip, const double delta_t,
                          const int steps = 1);
-  void cfPrediction(const std::vector<Eigen::Vector3d> &manip_map,
-                    const double k_attr, const double k_circ,
-                    const double k_repel, const double k_damp,
-                    const double k_manip, const double delta_t,
-                    const size_t max_prediction_steps);
+  // void cfPrediction(const std::vector<Eigen::Vector3d> &manip_map,
+  //                   const double k_attr, const double k_circ,
+  //                   const double k_repel, const double k_damp,
+  //                   const double k_manip, const double delta_t,
+  //                   const size_t max_prediction_steps);
+
+  double planStep(const std::vector<Eigen::Vector3d> &manip_map,
+              const double k_attr, const double k_circ,
+              const double k_repel, const double k_damp,
+              const double k_manip, const double delta_t); // returns step compute time
+
   void reset();
   virtual Eigen::Vector3d currentVector(
       const Eigen::Vector3d agent_pos, const Eigen::Vector3d agent_vel,

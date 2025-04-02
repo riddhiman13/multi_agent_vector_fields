@@ -7,6 +7,8 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include "helpers/ThreadPool.h"
+#include <thread>
 
 using Eigen::Vector3d;
 using std::vector;
@@ -32,10 +34,13 @@ CfManager::CfManager(
       k_d_ee_{k_d_ee},
       k_manip_{k_manip},
       k_r_force_{k_r_force},
-      run_prediction_{false},
+      // run_prediction_{false},
+      delta_t_{delta_t},
       approach_dist_{approach_dist},
       real_ee_agent_(0, agent_pos, goal_pos, detect_shell_rad, agent_mass,
-                     radius, velocity_max, approach_dist, obstacles.size(),start_orientation,goal_orientation) 
+                     radius, velocity_max, approach_dist, obstacles.size(),start_orientation,goal_orientation),
+      pool_(std::thread::hardware_concurrency())
+
 {
   init(goal_pos, delta_t, obstacles, k_a_ee, k_c_ee, k_r_ee, k_d_ee, k_manip,
        k_r_force, velocity_max, approach_dist, detect_shell_rad,start_orientation,goal_orientation);
@@ -54,7 +59,7 @@ void CfManager::init(
     const double agent_mass, const double radius) {
   assert((k_a_ee.size() == k_c_ee.size()) && (k_c_ee.size() == k_r_ee.size()) &&
          (k_c_ee.size() == k_manip.size()));
-  joinPredictionThreads();
+  // joinPredictionThreads();
   ee_agents_.clear();
   goal_pos_ = goal_pos;
   k_a_ee_ = k_a_ee;
@@ -63,7 +68,13 @@ void CfManager::init(
   k_d_ee_ = k_d_ee;
   k_manip_ = k_manip;
   k_r_force_ = k_r_force;
-  run_prediction_ = false;
+  
+  
+  delta_t_ = delta_t;
+  max_prediction_steps_ = max_prediction_steps;
+  // run_prediction_ = false;
+
+
   int obstacle_size = obstacles.size();
   approach_dist_ = approach_dist;
 
@@ -124,63 +135,126 @@ void CfManager::init(
   // std::ifstream fin("manipulability_dim_60_res_5_Vector", std::ios::in |
   // std::ios::binary); fin.read((char *)(&manip_map_[0]), dim_size * dim_size
   // * dim_size * sizeof(Vector3d)); fin.close();
-  for (size_t i = 0; i < ee_agents_.size(); i++) 
-  {
-    prediction_threads_.push_back(std::thread(
-        &CfAgent::cfPrediction, std::ref(*ee_agents_[i]), std::ref(manip_map_),
-        k_a_ee_[i], k_c_ee_[i], k_r_ee_[i], k_d_ee_[i], k_manip_[i],
-        prediction_freq_multiple * delta_t, max_prediction_steps));
-  }
+  // for (size_t i = 0; i < ee_agents_.size(); i++) 
+  // {
+  //   prediction_threads_.push_back(std::thread(
+  //       &CfAgent::cfPrediction, std::ref(*ee_agents_[i]), std::ref(manip_map_),
+  //       k_a_ee_[i], k_c_ee_[i], k_r_ee_[i], k_d_ee_[i], k_manip_[i],
+  //       prediction_freq_multiple * delta_t, max_prediction_steps));
+  // }
+
+
   ROS_INFO("k_a_ee.size %lu :", k_a_ee.size());
 
   ROS_INFO("CfManager initialized with %lu agents:", ee_agents_.size());
   
 }
 
-void CfManager::stopPrediction() {
-  for (auto &ee_agent : ee_agents_) 
-  {
-    ee_agent->stopPrediction();
-  }
-  // Wait for all agents to finish their prediction loop
-  bool agent_running = true;
-  while (agent_running) {
-    agent_running = false;
-    for (auto &agent : ee_agents_)
-     {
-      if (agent->getRunningStatus()) 
-      {
-        agent_running = true;
-      }
-    }
-  }
-};
+// void CfManager::stopPrediction() {
+//   for (auto &ee_agent : ee_agents_) 
+//   {
+//     ee_agent->stopPrediction();
+//   }
+//   // Wait for all agents to finish their prediction loop
+//   bool agent_running = true;
+//   while (agent_running) {
+//     agent_running = false;
+//     for (auto &agent : ee_agents_)
+//      {
+//       if (agent->getRunningStatus()) 
+//       {
+//         agent_running = true;
+//       }
+//     }
+//   }
+// };
 
-void CfManager::joinPredictionThreads()
- {
-  // Stop predictions
-  for (auto &ee_agent : ee_agents_) 
-  {
-    ee_agent->stopPrediction();
-    ee_agent->shutdownAgent();
-  }
-  // Join and delete prediction threads
-  for (int i = prediction_threads_.size() - 1; i >= 0; i--)
-   {
-    if (prediction_threads_.at(i).joinable()) {
-      // It is only possible to get the thread handle before it is joined
-      pthread_t thread_handle = prediction_threads_.at(i).native_handle();
-      // Merges thread back into program
-      prediction_threads_.at(i).join();
-      // This is needed to really free OS memory
-      pthread_cancel(thread_handle);
-      // Calling the destructor apparently only works if the thread was
-      // not joined before and the it would terminate all threads? See
-      prediction_threads_.pop_back();
-    } else 
-    {
-      std::cout << "not joinable" << std::endl; /* code */
+// void CfManager::joinPredictionThreads()
+//  {
+//   // Stop predictions
+//   for (auto &ee_agent : ee_agents_) 
+//   {
+//     ee_agent->stopPrediction();
+//     ee_agent->shutdownAgent();
+//   }
+//   // Join and delete prediction threads
+//   for (int i = prediction_threads_.size() - 1; i >= 0; i--)
+//    {
+//     if (prediction_threads_.at(i).joinable()) {
+//       // It is only possible to get the thread handle before it is joined
+//       pthread_t thread_handle = prediction_threads_.at(i).native_handle();
+//       // Merges thread back into program
+//       prediction_threads_.at(i).join();
+//       // This is needed to really free OS memory
+//       pthread_cancel(thread_handle);
+//       // Calling the destructor apparently only works if the thread was
+//       // not joined before and the it would terminate all threads? See
+//       prediction_threads_.pop_back();
+//     } else 
+//     {
+//       std::cout << "not joinable" << std::endl; /* code */
+//     }
+//   }
+// }
+
+void CfManager::startPlanning(){
+  // this is the main planning loop
+  // it plans for each agent in lockstep
+  // this ensures that all agents are planning at the same time
+  // and no single agent is planning ahead of the others
+  // and that the prediction is consistent/deterministic
+  run_planning_ = true;
+  unsigned int planning_cycle_count = 0;
+
+  planning_thread_ = std::thread([this, &planning_cycle_count](){
+    while (run_planning_){
+      for (unsigned step=0; step<max_prediction_steps_; ++step){
+        if (force_planning_stop_) break; 
+        
+        // plan for each agent in lockstep
+        std::vector<std::future<void>> futures;
+        for (unsigned i=0; i<ee_agents_.size(); i++){
+          futures.emplace_back(pool_.enqueue([this, i, step](){
+            
+            ee_agents_[i]->planStep(manip_map_, 
+            k_a_ee_[i], k_c_ee_[i], k_r_ee_[i], k_d_ee_[i], k_manip_[i], 
+            delta_t_);
+            // ROS_INFO("AGENT %d PLANNING STEP %d", i, step);
+
+          }));
+        }
+
+        for (auto &future : futures){
+          future.get();
+        }
+
+      planning_cycle_count++;
     }
+  }});
+}
+
+
+// void CfManager::predictObstacles(const double delta_t){
+//   for (auto &&obstacle : obstacles_) 
+//   {
+//     Eigen::Vector3d new_pos = obstacle.getPosition() + obstacle.getVelocity() * delta_t;
+//     obstacle.setPosition(new_pos);
+//   }
+// }
+
+void CfManager::stopPlanning(bool force_stop){
+  // WARNING: force stop stops the plan at the current step
+  // you will not get the full prediction rollout if you force stop
+  // it is better to let the planning run to completion and reduce the prediction steps instead
+  if (run_planning_){
+    run_planning_ = false;
+    if (force_stop){
+      force_planning_stop_ = true;
+    }
+    planning_thread_.join(); // never joins
+    force_planning_stop_ = false;
+
+    ROS_INFO("Planned Once!");
   }
 }
 
@@ -298,41 +372,41 @@ void CfManager::moveRealEEAgent(const vector<Obstacle> &obstacles,
       k_r_ee_[agent_id], k_d_ee_[agent_id], k_manip_[agent_id], delta_t, steps);
 };
 
-void CfManager::moveAgent(const vector<Obstacle> &obstacles,
-                          const double delta_t, const int steps, const int id) 
-{
-  while (run_prediction_ && ee_agents_[id]->getDistFromGoal() > 0.05) 
-  {
-    ee_agents_[id]->cfPlanner(manip_map_, obstacles, k_a_ee_[id], k_c_ee_[id],
-                              k_r_ee_[id], k_d_ee_[id], k_manip_[id], delta_t,
-                              steps);
-  }
-};
+// void CfManager::moveAgent(const vector<Obstacle> &obstacles,
+//                           const double delta_t, const int steps, const int id) 
+// {
+//   while (run_prediction_ && ee_agents_[id]->getDistFromGoal() > 0.05) 
+//   {
+//     ee_agents_[id]->cfPlanner(manip_map_, obstacles, k_a_ee_[id], k_c_ee_[id],
+//                               k_r_ee_[id], k_d_ee_[id], k_manip_[id], delta_t,
+//                               steps);
+//   }
+// };
 
-void CfManager::moveAgents(const vector<Obstacle> &obstacles,
-                           const double delta_t, const int steps) 
-{
-  ROS_INFO("ee_agent number : %lu", ee_agents_.size());
+// void CfManager::moveAgents(const vector<Obstacle> &obstacles,
+//                            const double delta_t, const int steps) 
+// {
+//   ROS_INFO("ee_agent number : %lu", ee_agents_.size());
 
-  for (size_t i = 0; i < ee_agents_.size(); ++i) 
-  {
-    ee_agents_[i]->cfPlanner(manip_map_, obstacles, k_a_ee_[i], k_c_ee_[i], k_r_ee_[i], k_d_ee_[i], k_manip_[i], delta_t, steps);
+//   for (size_t i = 0; i < ee_agents_.size(); ++i) 
+//   {
+//     ee_agents_[i]->cfPlanner(manip_map_, obstacles, k_a_ee_[i], k_c_ee_[i], k_r_ee_[i], k_d_ee_[i], k_manip_[i], delta_t, steps);
 
-      //    agents[i]->cfPlanner({},     obstacles,  5.0,            1.0,      10.0,        1.0,         0.0,     0.1,       1);
-  }
+//       //    agents[i]->cfPlanner({},     obstacles,  5.0,            1.0,      10.0,        1.0,         0.0,     0.1,       1);
+//   }
 
-};
+// };
 
-void CfManager::moveAgentsPar(const vector<Obstacle> &obstacles,
-                              const double delta_t, const int steps) 
-{
-#pragma omp parallel for
-  for (auto it = ee_agents_.begin(); it < ee_agents_.end(); it++) {
-    int idx = it - ee_agents_.begin();
-    (*it)->cfPlanner(manip_map_, obstacles, k_a_ee_[idx], k_c_ee_[idx],
-                     k_r_ee_[idx], k_d_ee_[idx], k_manip_[idx], delta_t, steps);
-  }
-};
+// void CfManager::moveAgentsPar(const vector<Obstacle> &obstacles,
+//                               const double delta_t, const int steps) 
+// {
+// #pragma omp parallel for
+//   for (auto it = ee_agents_.begin(); it < ee_agents_.end(); it++) {
+//     int idx = it - ee_agents_.begin();
+//     (*it)->cfPlanner(manip_map_, obstacles, k_a_ee_[idx], k_c_ee_[idx],
+//                      k_r_ee_[idx], k_d_ee_[idx], k_manip_[idx], delta_t, steps);
+//   }
+// };
 
 Eigen::Vector3d CfManager::getRealEEAgentPosition() const 
 {

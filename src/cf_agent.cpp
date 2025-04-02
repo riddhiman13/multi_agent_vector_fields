@@ -58,6 +58,7 @@ void CfAgent::reset()
   Eigen::Vector3d one_step_pos{getFirstPosition()};
   pos_.clear();
   pos_.push_back(one_step_pos);
+  reached_goal_ = false;
 }
 
 void CfAgent::setVelocity(const Eigen::Vector3d &velocity) 
@@ -367,22 +368,63 @@ void CfAgent::cfPlanner(const std::vector<Eigen::Vector3d> &manip_map,
   }
 }
 
-void CfAgent::cfPrediction(const std::vector<Eigen::Vector3d> &manip_map,
+// void CfAgent::cfPrediction(const std::vector<Eigen::Vector3d> &manip_map,
+//                            const double k_attr, const double k_circ,
+//                            const double k_repel, const double k_damp,
+//                            const double k_manip, const double delta_t,
+//                            const size_t max_prediction_steps) {
+//   while (!finished_) {
+//     std::chrono::steady_clock::time_point begin_prediction =
+//         std::chrono::steady_clock::now();
+//     while (run_prediction_ && getDistFromGoal() > 0.1 &&
+//            pos_.size() < max_prediction_steps) {
+//       running_ = true;
+//       resetForce();
+//       double k_goal_scale = 1.0;
+//       if (!(getDistFromGoal() < approach_dist_ ||
+//             (vel_.norm() < 0.5 * vel_max_ &&
+//              (getLatestPosition() - init_pos_).norm() < 0.2))) {
+//         circForce(obstacles_, k_circ);
+//         if (force_.norm() > 1e-5) {
+//           k_goal_scale = attractorForceScaling(obstacles_);
+//         }
+//       }
+//       repelForce(obstacles_, k_repel);
+//       attractorForce(k_attr, k_damp, k_goal_scale);
+//       updatePositionAndVelocity(delta_t);
+//       predictObstacles(delta_t);
+//     }
+//     auto end_prediction = std::chrono::steady_clock::now();
+//     if (running_) {
+//       prediction_time_ = (end_prediction - begin_prediction).count();
+//       if (getDistFromGoal() < 0.100001) {
+//         reached_goal_ = true;
+//       } else {
+//         reached_goal_ = false;
+//       }
+//     }
+
+//     running_ = false;
+//   }
+// }
+
+
+double CfAgent::planStep(const std::vector<Eigen::Vector3d> &manip_map,
                            const double k_attr, const double k_circ,
                            const double k_repel, const double k_damp,
-                           const double k_manip, const double delta_t,
-                           const size_t max_prediction_steps) {
-  while (!finished_) {
-    std::chrono::steady_clock::time_point begin_prediction =
-        std::chrono::steady_clock::now();
-    while (run_prediction_ && getDistFromGoal() > 0.1 &&
-           pos_.size() < max_prediction_steps) {
-      running_ = true;
+                           const double k_manip, const double delta_t){
+  // while (!finished_) {
+    // std::chrono::steady_clock::time_point begin_prediction =
+    //     std::chrono::steady_clock::now();
+    // while (run_prediction_ && getDistFromGoal() > 0.1 &&
+    //        pos_.size() < max_prediction_steps) {
+    // running_ = true;
+    if (!reached_goal_){
       resetForce();
       double k_goal_scale = 1.0;
       if (!(getDistFromGoal() < approach_dist_ ||
-            (vel_.norm() < 0.5 * vel_max_ &&
-             (getLatestPosition() - init_pos_).norm() < 0.2))) {
+          (vel_.norm() < 0.5 * vel_max_ &&
+          (getLatestPosition() - init_pos_).norm() < 0.2))) {
         circForce(obstacles_, k_circ);
         if (force_.norm() > 1e-5) {
           k_goal_scale = attractorForceScaling(obstacles_);
@@ -391,21 +433,26 @@ void CfAgent::cfPrediction(const std::vector<Eigen::Vector3d> &manip_map,
       repelForce(obstacles_, k_repel);
       attractorForce(k_attr, k_damp, k_goal_scale);
       updatePositionAndVelocity(delta_t);
-      predictObstacles(delta_t);
-    }
-    auto end_prediction = std::chrono::steady_clock::now();
-    if (running_) {
-      prediction_time_ = (end_prediction - begin_prediction).count();
+      predictObstacles(delta_t); // could be done for all agents at once in the planning step for loop
+      // }
+      // auto end_prediction = std::chrono::steady_clock::now();
+      // if (running_) {
+        // prediction_time_ = (end_prediction - begin_prediction).count();
       if (getDistFromGoal() < 0.100001) {
         reached_goal_ = true;
-      } else {
-        reached_goal_ = false;
-      }
-    }
+      } 
+    // else {
+    //   reached_goal_ = false;
+    // }
+    // }
 
-    running_ = false;
-  }
+    // running_ = false;
+    // }
+    }
 }
+
+
+
 
 void RealCfAgent::cfPlanner(const std::vector<Eigen::Vector3d> &manip_map,
                             const std::vector<Obstacle> &obstacles,
