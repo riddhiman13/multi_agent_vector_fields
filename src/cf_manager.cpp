@@ -251,8 +251,12 @@ void CfManager::stopPlanning(bool force_stop){
     if (force_stop){
       force_planning_stop_ = true;
     }
-    planning_thread_.join(); // never joins
-    force_planning_stop_ = false;
+    if (planning_thread_.joinable())
+    { 
+      planning_thread_.join(); // wait for the planning thread to finish
+      force_planning_stop_ = false;    
+    }
+    force_planning_stop_ = true;
 
     ROS_INFO("Planned Once!");
   }
