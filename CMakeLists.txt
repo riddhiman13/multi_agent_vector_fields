@@ -53,19 +53,19 @@ target_link_libraries(multi_agent_vector_fields PUBLIC
 
 # different node libraries
 add_executable(main_node src/agent_plus_scene.cpp)
-target_link_libraries(main_node
+target_link_libraries(main_node PUBLIC
   multi_agent_vector_fields
   yaml-cpp
 )
 
 add_executable(test_node src/agent_plus_scene_status)
-target_link_libraries(test_node
+target_link_libraries(test_node PUBLIC
   multi_agent_vector_fields
   yaml-cpp
 )
 
-add_executable(multi_agent_feedback_node agent_plus_scene_status_new.cpp)
-target_link_libraries(multi_agent_feedback_node
+add_executable(multi_agent_feedback_node src/agent_plus_scene_status_new.cpp)
+target_link_libraries(multi_agent_feedback_node PUBLIC
   multi_agent_vector_fields
   yaml-cpp
 )

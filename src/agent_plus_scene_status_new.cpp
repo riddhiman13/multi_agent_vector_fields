@@ -12,58 +12,31 @@
 
 #include "multi_agent_vector_fields/cf_manager.h"
 #include "multi_agent_vector_fields/visualize_helper.h"
-
-#include <yaml-cpp/yaml.h>
+#include "multi_agent_vector_fields/parameter_helper.h"
 
 using namespace ghostplanner::cfplanner;
 
-std::vector<Obstacle> obstacles;
-Eigen::Vector3d TCP_pos;
-bool first_receive_TCP_pos = false;
-
-Eigen::Vector3d readVector3d(const YAML::Node& node) 
-{
-    auto vec = node.as<std::vector<double>>();
-    return Eigen::Vector3d(vec[0], vec[1], vec[2]);
-}
-
-Eigen::Quaterniond readQuaternion(const YAML::Node& node) {
-    auto quat = node.as<std::vector<double>>();
-    return Eigen::Quaterniond(quat[0], quat[1], quat[2], quat[3]);
-}
-
-void readAgentParameters(const YAML::Node& node, double& detect_shell_rad, double& agent_mass,
-                         double& agent_radius, double& velocity_max, double& approach_dist,
-                         std::vector<double>& k_a_ee, std::vector<double>& k_c_ee, 
-                         std::vector<double>& k_r_ee, std::vector<double>& k_r_force, 
-                         std::vector<double>& k_d_ee, std::vector<double>& k_manip) 
-{
-    detect_shell_rad = node["detect_shell_rad"].as<double>();
-    agent_mass = node["agent_mass"].as<double>();
-    agent_radius = node["agent_radius"].as<double>();
-    velocity_max = node["velocity_max"].as<double>();
-    approach_dist = node["approach_dist"].as<double>();
-    k_a_ee = node["k_a_ee"].as<std::vector<double>>();
-    k_c_ee = node["k_c_ee"].as<std::vector<double>>();
-    k_r_ee = node["k_r_ee"].as<std::vector<double>>();
-    k_r_force = node["k_r_force"].as<std::vector<double>>();
-    k_d_ee = node["k_d_ee"].as<std::vector<double>>();
-    k_manip = node["k_manip"].as<std::vector<double>>();
-}
-
+// Subsriber: goal
+Eigen::Vector3d goal_pos_;
+Eigen::Quaterniond goal_orientation_;
+bool first_receive_goal_ = false;
 void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
-    // Handle the goal position and orientation
-    Eigen::Vector3d goal_position(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
-    Eigen::Quaterniond goal_orientation(msg->pose.orientation.w, msg->pose.orientation.x,
-                                        msg->pose.orientation.y, msg->pose.orientation.z);
+    if (first_receive_goal_ == false) first_receive_goal_ = true;
+    goal_pos_ = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
+    goal_orientation_ = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, 
+                                           msg->pose.orientation.y, msg->pose.orientation.z);
 
-    ROS_INFO("Received goal position: [%.2f, %.2f, %.2f]", goal_position.x(), goal_position.y(), goal_position.z());
+    ROS_INFO("Received goal position: [%.2f, %.2f, %.2f]", goal_pos_.x(), goal_pos_.y(), goal_pos_.z());
     ROS_INFO("Received goal orientation: [%.2f, %.2f, %.2f, %.2f]", 
-             goal_orientation.w(), goal_orientation.x(), goal_orientation.y(), goal_orientation.z());
+             goal_orientation_.w(), goal_orientation_.x(), goal_orientation_.y(), goal_orientation_.z());
 }
 
+// Subscriber: planning scene
+std::vector<Obstacle> obstacles_;
+bool first_receive_obstacles_ = false;
 void planningSceneCallback(const moveit_msgs::PlanningScene::ConstPtr& msg) {
-    obstacles.clear();
+    if (first_receive_obstacles_ == false) first_receive_obstacles_ = true;
+    obstacles_.clear();
     for (const auto& obj : msg->world.collision_objects) {
         if (obj.primitives.empty()) continue;
 
@@ -72,22 +45,53 @@ void planningSceneCallback(const moveit_msgs::PlanningScene::ConstPtr& msg) {
         double radius = (obj.primitives[0].type == shape_msgs::SolidPrimitive::SPHERE) ? 
                          obj.primitives[0].dimensions[0] : 0.5;
 
-        obstacles.emplace_back(obj.id, position, Eigen::Vector3d(0, 0, 0), radius, false, 0.0);
+        obstacles_.emplace_back(obj.id, position, Eigen::Vector3d(0, 0, 0), radius, false, 0.0);
     }
-
-    //ROS_INFO("Load %zu obstacles from topic", obstacles.size());
 }
 
+// Subscriber: franka state
+Eigen::Vector3d TCP_pos_;
+Eigen::Quaterniond TCP_orientation_;
+Eigen::Vector3d start_pos_(0.0, 0.0, 0.0);
+Eigen::Quaterniond start_orientation_(1.0, 0.0, 0.0, 0.0);
+bool first_receive_TCP_ = false;
 void frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg) 
 {
-    if(first_receive_TCP_pos == false) first_receive_TCP_pos = true;
-    TCP_pos = Eigen::Vector3d(msg->O_T_EE[12], msg->O_T_EE[13], msg->O_T_EE[14]);
+    Eigen::Matrix4d TCP_transform = Eigen::Map<const Eigen::Matrix4d>(msg->O_T_EE.data());
+
+    TCP_pos_ = TCP_transform.block<3, 1>(0, 3);
+    TCP_orientation_ = Eigen::Quaterniond(Eigen::Matrix3d(TCP_transform.block<3, 3>(0, 0)));
+
+    if (first_receive_TCP_ == false){
+        first_receive_TCP_ = true;
+        start_pos_ = TCP_pos_;
+        start_orientation_ = TCP_orientation_;
+    }
 }
 
 int main(int argc, char** argv) {
     std::string node_name = "multi_agent_scene_status";
     ros::init(argc, argv, node_name);
     ros::NodeHandle nh;
+
+    // Load ROS parameters
+    int frequency;
+    double detect_shell_rad, agent_mass, agent_radius, velocity_max, approach_dist;
+    std::vector<double> k_a_ee, k_c_ee, k_r_ee, k_r_force, k_d_ee, k_manip;
+
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/frequency",         frequency);
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/detect_shell_rad",  detect_shell_rad);
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/agent_mass",        agent_mass);
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/agent_radius",      agent_radius);
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/velocity_max",      velocity_max);
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/approach_dist",     approach_dist);
+
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/k_a_ee",    k_a_ee);
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/k_c_ee",    k_c_ee);
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/k_r_ee",    k_r_ee);
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/k_r_force", k_r_force);
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/k_d_ee",    k_d_ee);
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/k_manip",   k_manip);
 
     // Set up publishers and subscribers
     ros::Publisher marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 10);
@@ -101,78 +105,34 @@ int main(int argc, char** argv) {
     ros::Subscriber franka_state_sub = nh.subscribe("/franka_state_controller/franka_states", 1, frankaStateCallback);
     ros::Subscriber planning_scene_sub = nh.subscribe("/planning_scene", 1, planningSceneCallback);
 
-    // Read from YAML files
-    std::string package_path = ros::package::getPath("multi_agent_vector_fields");
-    YAML::Node start_goal = YAML::LoadFile(package_path + "/config/start_goal.yaml");
-    YAML::Node agent_parameters = YAML::LoadFile(package_path + "/config/agent_parameters.yaml");
-
-    Eigen::Vector3d start_pos = readVector3d(start_goal["start_pos"]);
-    Eigen::Vector3d goal_pos = readVector3d(start_goal["goal_pos"]);
-    Eigen::Quaterniond start_orientation = readQuaternion(start_goal["start_orientation"]);
-    Eigen::Quaterniond goal_orientation = readQuaternion(start_goal["goal_orientation"]);
-
-    ROS_INFO("Start position: [%.2f, %.2f, %.2f]", start_pos.x(), start_pos.y(), start_pos.z());
-    ROS_INFO("Goal position: [%.2f, %.2f, %.2f]", goal_pos.x(), goal_pos.y(), goal_pos.z());
-    ROS_INFO("Start orientation: [%.2f, %.2f, %.2f, %.2f]", start_orientation.w(), start_orientation.x(), start_orientation.y(), start_orientation.z());
-    ROS_INFO("Goal orientation: [%.2f, %.2f, %.2f, %.2f]", goal_orientation.w(), goal_orientation.x(), goal_orientation.y(), goal_orientation.z());
-
-
-    // std::vector<Obstacle> obstacles = readObstacles(obstacles_yaml["obstacles"]);
-    //std::vector<Obstacle> obstacles;
-
-    
-    ros::Rate rate(10);
-
-    while (ros::ok() && obstacles.empty()) {
+    // Wait for the first receive of the message
+    ros::Rate rate(frequency);
+    while (ros::ok() && (!first_receive_goal_ || !first_receive_obstacles_ || !first_receive_TCP_)) {
         ros::spinOnce();
-        ROS_INFO_THROTTLE(1, "Waiting for first planning_scene message...");
+        ROS_INFO_STREAM_THROTTLE(1, node_name << ": Waiting for first messages:"
+                                 << " goal: [" << first_receive_goal_ << "],"
+                                 << " obstacles: [" << first_receive_obstacles_ << "],"
+                                 << " TCP: [" << first_receive_TCP_ << "]");
         rate.sleep();
     }
-    /*for (const auto& obs : obstacles)
-    {
-        ROS_INFO("Obstacle: %s, Position: [%.2f, %.2f, %.2f], Radius: %.2f", obs.getName().c_str(),
-                 obs.getPosition().x(), obs.getPosition().y(), obs.getPosition().z(), obs.getRadius());
-    }
-    */
 
-    double detect_shell_rad, agent_mass, agent_radius, velocity_max, approach_dist;
-    std::vector<double> k_a_ee, k_c_ee, k_r_ee, k_r_force, k_d_ee, k_manip;
-    readAgentParameters(agent_parameters, detect_shell_rad, agent_mass, agent_radius, velocity_max, approach_dist,
-                        k_a_ee, k_c_ee, k_r_ee, k_r_force, k_d_ee, k_manip);
-
-    ROS_INFO("Agent Parameters:");
-    ROS_INFO("  Detect shell radius: %.2f", detect_shell_rad);
-    ROS_INFO("  Agent mass: %.2f", agent_mass);
-    ROS_INFO("  Agent radius: %.2f", agent_radius);
-    ROS_INFO("  Velocity max: %.2f", velocity_max);
-    ROS_INFO("  k_a_ee: [%.2f, %.2f, %.2f, %.2f]", k_a_ee[0], k_a_ee[1], k_a_ee[2], k_a_ee[3]);
-    ROS_INFO("  k_c_ee: [%.2f, %.2f, %.2f, %.2f]", k_c_ee[0], k_c_ee[1], k_c_ee[2], k_c_ee[3]);
-    ROS_INFO("  k_r_ee: [%.2f, %.2f, %.2f, %.2f]", k_r_ee[0], k_r_ee[1], k_r_ee[2], k_r_ee[3]);
-    ROS_INFO("  k_r_force: [%.2f, %.2f, %.2f, %.2f]", k_r_force[0], k_r_force[1], k_r_force[2], k_r_force[3]);
-    ROS_INFO("  k_d_ee: [%.2f, %.2f, %.2f, %.2f]", k_d_ee[0], k_d_ee[1], k_d_ee[2], k_d_ee[3]);
-    ROS_INFO("  k_manip: [%.2f, %.2f, %.2f, %.2f]", k_manip[0], k_manip[1], k_manip[2], k_manip[3]);
-    ROS_INFO("----------------------------------");
-    
-
-    CfManager cf_manager(start_pos, goal_pos, 
-                        0.1, obstacles, 
-                        k_a_ee, k_c_ee, 
-                        k_r_ee, k_d_ee, 
-                        k_manip, k_r_force, 
-                        start_orientation, 
-                        goal_orientation,
-                        velocity_max, detect_shell_rad,
-                        agent_mass, agent_radius);
-
-    ros::Rate rate(10);
-    bool planning_active = true;
-    bool open_loop = false;
+    ROS_INFO_STREAM(node_name << ": start position (at first moment): " << start_pos_.transpose());
+    ROS_INFO_STREAM(node_name << ": start orientation (at first moment): " << start_orientation_.coeffs().transpose());
+    ROS_INFO_STREAM(node_name << ": goal position (at first moment): " << goal_pos_.transpose());
+    ROS_INFO_STREAM(node_name << ": goal orientation (at first moment): " << goal_orientation_.coeffs().transpose());
+        
+    CfManager cf_manager(start_pos_, goal_pos_, 
+                        1.0/ static_cast<double>(frequency), 
+                        obstacles_, 
+                        k_a_ee, k_c_ee, k_r_ee, k_d_ee, k_manip, k_r_force, 
+                        start_orientation_, goal_orientation_,
+                        velocity_max, detect_shell_rad, agent_mass, agent_radius);
 
     // Visualization for Real Traj 
     std::vector<Eigen::Vector3d> trajectory_history;
 
-    cf_manager.setRealEEAgentPosition(start_pos);
-
+    bool planning_active = true;
+    cf_manager.setRealEEAgentPosition(start_pos_);
     while (ros::ok()) 
     {
         if (planning_active) {
@@ -180,7 +140,7 @@ int main(int argc, char** argv) {
             cf_manager.stopPrediction();
 
             // evaluaiton on best agent
-            int best_agent_id = cf_manager.evaluateAgents(obstacles, 1.0, 1.0, 1.0, 1.0, Eigen::Matrix<double, 6, 1>::Zero());
+            int best_agent_id = cf_manager.evaluateAgents(obstacles_, 1.0, 1.0, 1.0, 1.0, Eigen::Matrix<double, 6, 1>::Zero());
 
             // retrieve the data
             const auto& predicted_paths = cf_manager.getPredictedPaths();
@@ -189,17 +149,12 @@ int main(int argc, char** argv) {
             trajectory_history.push_back(current_agent_pos);
 
             // move Real Agent 
-            cf_manager.moveRealEEAgent(obstacles, 0.1, 1, best_agent_id);
+            cf_manager.moveRealEEAgent(obstacles_, 0.1, 1, best_agent_id);
             Eigen::Vector3d updated_position = cf_manager.getNextPosition();
 
             // next iteration 
-                        // Set Agents state when message in
-            if (first_receive_TCP_pos)
-            {
-                cf_manager.setRealEEAgentPosition(TCP_pos);
-            }
-
-            cf_manager.resetEEAgents(updated_position, cf_manager.getNextVelocity(), obstacles);
+            cf_manager.setRealEEAgentPosition(TCP_pos_);
+            cf_manager.resetEEAgents(updated_position, cf_manager.getNextVelocity(), obstacles_);
             cf_manager.startPrediction();
 
             /** visualize the data in RViz */
@@ -209,23 +164,15 @@ int main(int argc, char** argv) {
             multi_agent_vector_fields::visualizeMarker(marker_pub, current_agent_pos, Eigen::Quaterniond::Identity(), 100, "multi_agent_agent", 
                                                                                                             "world", agent_radius*2, 1.0, 1.0, 0.0, 0.5);
 
-
             // visualize goal, start and agent frame in tf 
-            multi_agent_vector_fields::publishFrame(tf_broadcaster, start_pos, start_orientation, "start_frame");
-            multi_agent_vector_fields::publishFrame(tf_broadcaster, goal_pos, goal_orientation, "goal_frame");
+            multi_agent_vector_fields::publishFrame(tf_broadcaster, start_pos_, start_orientation_, "start_frame");
+            multi_agent_vector_fields::publishFrame(tf_broadcaster, goal_pos_, goal_orientation_, "goal_frame");
             multi_agent_vector_fields::publishFrame(tf_broadcaster, current_agent_pos, current_agent_orientation, "agent_frame");
 
             // visualize predicted and history path
             multi_agent_vector_fields::publishMultiAgentPlannedPaths(marker_pub, predicted_paths, best_agent_id);
             multi_agent_vector_fields::publishPathMarker(marker_pub, trajectory_history, 201, "world", "multi_agent_trajectory", 
                                                         0.01, 1.0, 1.0, 0.0, 0.8);
-
-            // visualize obstacles 
-            for (size_t i = 0; i < obstacles.size(); ++i) {
-                multi_agent_vector_fields::visualizeMarker(marker_pub, obstacles[i].getPosition(), Eigen::Quaterniond::Identity(),
-                                                            static_cast<int>(i + 10), "multi_agent_obstacles", "world", 
-                                                            obstacles[i].getRadius() * 2.0, 0.6, 0.2, 0.1, 0.9);
-            }
 
             /** publish the data as message */
             // post agent postion 
@@ -241,6 +188,7 @@ int main(int argc, char** argv) {
             dist_pub.publish(dist_msg);
 
             // post agent twists
+            // this is actually not a "twist", its linear and angular velocity is not relevant.
             geometry_msgs::TwistStamped twist_msg;
             Eigen::Vector3d current_velocity = cf_manager.getNextVelocity();
             twist_msg.header.stamp = ros::Time::now();
@@ -274,7 +222,7 @@ int main(int argc, char** argv) {
         else 
         {
             ROS_INFO_STREAM("No active.");
-            cf_manager.setInitialPosition(start_pos);
+            cf_manager.setInitialPosition(TCP_pos_);
         }
 
         ros::spinOnce();
