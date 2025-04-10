@@ -25,10 +25,6 @@ void goalCallback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
     goal_pos_ = Eigen::Vector3d(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
     goal_orientation_ = Eigen::Quaterniond(msg->pose.orientation.w, msg->pose.orientation.x, 
                                            msg->pose.orientation.y, msg->pose.orientation.z);
-
-    ROS_INFO("Received goal position: [%.2f, %.2f, %.2f]", goal_pos_.x(), goal_pos_.y(), goal_pos_.z());
-    ROS_INFO("Received goal orientation: [%.2f, %.2f, %.2f, %.2f]", 
-             goal_orientation_.w(), goal_orientation_.x(), goal_orientation_.y(), goal_orientation_.z());
 }
 
 // Subscriber: planning scene

@@ -69,3 +69,10 @@ target_link_libraries(multi_agent_feedback_node PUBLIC
   multi_agent_vector_fields
   yaml-cpp
 )
+
+
+add_executable(bench_node src/planner_benchmark.cpp)
+target_link_libraries(bench_node
+  multi_agent_vector_fields
+  yaml-cpp
+)
