@@ -202,14 +202,14 @@ int main(int argc, char** argv) {
             // post agent twists in global frame
             // this is actually not really a twist "transformation". We only covert the twist for its orientation.
             geometry_msgs::TwistStamped twist_msg_global;
-            Eigen::Vector3d current_velocity_global = current_agent_orientation.toRotationMatrix() * current_velocity;
+            Eigen::Vector3d current_velocity_global =  current_velocity; //current_agent_orientation.toRotationMatrix() *
             twist_msg_global.header.stamp = ros::Time::now();
             twist_msg_global.header.frame_id = "world";
             twist_msg_global.twist.linear.x = current_velocity_global.x();
             twist_msg_global.twist.linear.y = current_velocity_global.y();
             twist_msg_global.twist.linear.z = current_velocity_global.z();
 
-            Eigen::Vector3d current_angular_velocity_global = current_agent_orientation.toRotationMatrix() * current_angular_velocity;
+            Eigen::Vector3d current_angular_velocity_global =  current_angular_velocity; //current_agent_orientation.toRotationMatrix() *
             twist_msg_global.twist.angular.x = current_angular_velocity_global.x();
             twist_msg_global.twist.angular.y = current_angular_velocity_global.y();
             twist_msg_global.twist.angular.z = current_angular_velocity_global.z();
