@@ -82,7 +82,7 @@ void planningSceneCallback(const moveit_msgs::PlanningScene::ConstPtr& msg) {
         obstacles.emplace_back(obj.id, position, Eigen::Vector3d(0, 0, 0), radius, false, 0.0);
     }
 
-    ROS_INFO("Load %zu obstacles from topic", obstacles.size());
+    //ROS_INFO("Load %zu obstacles from topic", obstacles.size());
 }
 
 void frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg) 
@@ -92,7 +92,7 @@ void frankaStateCallback(const franka_msgs::FrankaState::ConstPtr& msg)
     // }
     if(first_receive_TCP_pos == false) first_receive_TCP_pos = true;
     TCP_pos = Eigen::Vector3d(msg->O_T_EE[12], msg->O_T_EE[13], msg->O_T_EE[14]);
-    ROS_INFO_STREAM("Updated O_T_EE Position}: \n" << TCP_pos);
+    //ROS_INFO_STREAM("Updated O_T_EE Position}: \n" << TCP_pos);
 }
 
 void waitForFirstPlanningScene() {
@@ -200,12 +200,6 @@ int main(int argc, char** argv) {
     while (ros::ok()) 
     {
         if (planning_active) {
-            // Set Agents state when message in
-            if (first_receive_TCP_pos)
-            {
-                cf_manager.setRealEEAgentPosition(TCP_pos);
-            }
-
             // killed
             cf_manager.stopPrediction();
 
@@ -223,6 +217,12 @@ int main(int argc, char** argv) {
             Eigen::Vector3d updated_position = cf_manager.getNextPosition();
 
             // next iteration 
+                        // Set Agents state when message in
+            if (first_receive_TCP_pos)
+            {
+                cf_manager.setRealEEAgentPosition(TCP_pos);
+            }
+
             cf_manager.resetEEAgents(updated_position, cf_manager.getNextVelocity(), obstacles);
             cf_manager.startPrediction();
 

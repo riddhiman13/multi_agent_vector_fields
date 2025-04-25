@@ -1,0 +1,5 @@
+<launch>
+    <rosparam command="load" file="$(find multi_agent_vector_fields)/config/multi_agent_parameter.yaml" subst_value="true" />
+
+    <node name="multi_agent_feedback_node" pkg="multi_agent_vector_fields" type="multi_agent_feedback_node" output="screen"/>
+</launch>
