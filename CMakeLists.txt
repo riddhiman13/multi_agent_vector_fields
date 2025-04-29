@@ -76,3 +76,9 @@ target_link_libraries(bench_node
   multi_agent_vector_fields
   yaml-cpp
 )
+
+# Install Python scripts
+catkin_install_python(PROGRAMS
+  scripts/multi_agent_feedback_node_launcher.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
