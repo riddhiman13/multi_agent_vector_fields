@@ -82,6 +82,14 @@ int main(int argc, char** argv) {
         return -1;
     }
 
+    std::string trajectory_log_path = home_dir + "/FLIQC_example_workspace_ros/src/multi_agent_vector_fields/data/real_path.txt";
+    std::ofstream trajectory_output_file(trajectory_log_path);
+    if (!trajectory_output_file.is_open()) 
+    {
+        ROS_WARN_STREAM(node_name << ": Failed to open trajectory history file for writing.");
+        return -1;
+    }
+  
     // Load ROS parameters
     int frequency;
     double detect_shell_rad, agent_mass, agent_radius, velocity_max, approach_dist;
@@ -244,6 +252,13 @@ int main(int argc, char** argv) {
         ros::spinOnce();
         rate.sleep();
     }
+    ROS_INFO_STREAM("---------Process Finished---------");
+    for (const auto& point : trajectory_history) 
+    {
+        trajectory_output_file << point.x() << " " << point.y() << " " << point.z() << "\n";
+    }
     output_file.close();
+    trajectory_output_file.close();
+
     return 0;
 }
