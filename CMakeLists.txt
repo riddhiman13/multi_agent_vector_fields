@@ -38,7 +38,6 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIRS}
 )
 
 # multi_agent_vector_fields library
@@ -47,15 +46,39 @@ add_library(multi_agent_vector_fields
   src/cf_agent.cpp
   src/visualize_helper.cpp
 )
-target_link_libraries(multi_agent_vector_fields
+target_link_libraries(multi_agent_vector_fields PUBLIC
   ${catkin_LIBRARIES}
+  Eigen3::Eigen
 )
 
 # different node libraries
 add_executable(main_node src/agent_plus_scene.cpp)
-
-target_link_libraries(main_node
+target_link_libraries(main_node PUBLIC
   multi_agent_vector_fields
   yaml-cpp
-  ${catkin_LIBRARIES}
+)
+
+add_executable(test_node src/agent_plus_scene_status)
+target_link_libraries(test_node PUBLIC
+  multi_agent_vector_fields
+  yaml-cpp
+)
+
+add_executable(multi_agent_feedback_node src/agent_plus_scene_status_new.cpp)
+target_link_libraries(multi_agent_feedback_node PUBLIC
+  multi_agent_vector_fields
+  yaml-cpp
+)
+
+
+add_executable(bench_node src/planner_benchmark.cpp)
+target_link_libraries(bench_node
+  multi_agent_vector_fields
+  yaml-cpp
+)
+
+# Install Python scripts
+catkin_install_python(PROGRAMS
+  scripts/multi_agent_feedback_node_launcher.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
