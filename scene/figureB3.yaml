@@ -9,7 +9,7 @@ multi_agent_vector_fields:
   k_c_ee: [2.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]      # circumvention
   k_r_ee: [3.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]      # repulsion
   k_r_force: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # body repulsion
-  k_d_ee: [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]      # damping
+  k_d_ee: [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]      # damping
   k_manip: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]     # manipulability
 
 #  FLIQC param  dt: 0.06  eps: 0.03  panda
