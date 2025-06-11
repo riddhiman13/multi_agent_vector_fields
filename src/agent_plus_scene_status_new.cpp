@@ -14,6 +14,9 @@
 #include "multi_agent_vector_fields/visualize_helper.h"
 #include "multi_agent_vector_fields/parameter_helper.h"
 
+#include <fstream>
+#include <iostream> 
+#include <sys/stat.h>
 using namespace ghostplanner::cfplanner;
 
 // Subsriber: goal
@@ -69,7 +72,24 @@ int main(int argc, char** argv) {
     std::string node_name = "multi_agent_scene_status";
     ros::init(argc, argv, node_name);
     ros::NodeHandle nh;
+    // store history of the trajectorys
+    std::string home_dir = std::getenv("HOME");
+    std::string log_path = home_dir + "/FLIQC_example_workspace_ros/src/multi_agent_vector_fields/data/predicted_paths.txt";
+    std::ofstream output_file(log_path);
+    if (!output_file.is_open()) 
+    {
+        ROS_WARN_STREAM(node_name << ": Failed to open file for writing.");
+        return -1;
+    }
 
+    std::string trajectory_log_path = home_dir + "/FLIQC_example_workspace_ros/src/multi_agent_vector_fields/data/real_path.txt";
+    std::ofstream trajectory_output_file(trajectory_log_path);
+    if (!trajectory_output_file.is_open()) 
+    {
+        ROS_WARN_STREAM(node_name << ": Failed to open trajectory history file for writing.");
+        return -1;
+    }
+  
     // Load ROS parameters
     int frequency;
     double detect_shell_rad, agent_mass, agent_radius, velocity_max, approach_dist;
@@ -140,6 +160,14 @@ int main(int argc, char** argv) {
 
             // retrieve the data
             const auto& predicted_paths = cf_manager.getPredictedPaths();
+
+            // collect all the history predictve paths
+            for (const auto& path : predicted_paths) {
+                for (const auto& point : path) {
+                    output_file << point.x() << " " << point.y() << " " << point.z() << "\n";
+                }
+            }
+
             Eigen::Vector3d current_agent_pos = cf_manager.getNextPosition();
             Eigen::Quaterniond current_agent_orientation = cf_manager.getNextOrientation();
             trajectory_history.push_back(current_agent_pos);
@@ -224,6 +252,13 @@ int main(int argc, char** argv) {
         ros::spinOnce();
         rate.sleep();
     }
+    ROS_INFO_STREAM("---------Process Finished---------");
+    for (const auto& point : trajectory_history) 
+    {
+        trajectory_output_file << point.x() << " " << point.y() << " " << point.z() << "\n";
+    }
+    output_file.close();
+    trajectory_output_file.close();
 
     return 0;
 }
