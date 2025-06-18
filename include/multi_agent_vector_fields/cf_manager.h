@@ -77,12 +77,8 @@ class CfManager {
   std::vector<double> getPredictionTimes();
   std::vector<bool> getAgentSuccess();
   int getBestAgentType() { return best_agent_->getAgentType(); };
-  Eigen::Vector3d getNextPosition() {
-    return real_ee_agent_.getLatestPosition();
-  };
-  Eigen::Quaterniond getNextOrientation()  {
-    return real_ee_agent_.getOrientation();
-}
+  Eigen::Vector3d getNextPosition() {return real_ee_agent_.getLatestPosition();};
+  Eigen::Quaterniond getNextOrientation()  {return real_ee_agent_.getOrientation();}
   Eigen::Vector3d getInitialPosition() { return init_pos_; };
   Eigen::Vector3d getNextVelocity() { return real_ee_agent_.getVelocity(); };
   Eigen::Vector3d getNextAngularVelocity() const {return real_ee_agent_.getAngularVelocity();}

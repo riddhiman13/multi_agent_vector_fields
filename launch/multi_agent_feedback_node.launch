@@ -1,0 +1,3 @@
+<launch>
+    <node name="multi_agent_feedback_node" pkg="multi_agent_vector_fields" type="multi_agent_feedback_node" output="screen"/>
+</launch>

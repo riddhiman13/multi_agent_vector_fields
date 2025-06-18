@@ -1,10 +1,8 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(multi_agent_vector_fields)
 
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
@@ -16,24 +14,11 @@ find_package(catkin REQUIRED COMPONENTS
   visualization_msgs
   eigen_conversions
   roslib
+  moveit_msgs
 )
 
 find_package(Eigen3 REQUIRED)
 find_package(yaml-cpp REQUIRED)
-
-
-add_message_files(
-  FILES
-  Position.msg
-)
-
-add_service_files(
-  FILES
-  JointMotion.srv
-)
-
-generate_messages(DEPENDENCIES std_msgs)
-
 
 catkin_package(
   INCLUDE_DIRS include
@@ -46,44 +31,54 @@ catkin_package(
     tf2_geometry_msgs
     tf2_ros
     visualization_msgs
+    moveit_msgs
 )
 
 
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  ${EIGEN3_INCLUDE_DIRS}
 )
 
+# multi_agent_vector_fields library
 add_library(multi_agent_vector_fields
   src/cf_manager.cpp
   src/cf_agent.cpp
+  src/visualize_helper.cpp
 )
-
-target_link_libraries(multi_agent_vector_fields
-  yaml-cpp
+target_link_libraries(multi_agent_vector_fields PUBLIC
   ${catkin_LIBRARIES}
+  Eigen3::Eigen
 )
 
-
-add_executable(main_node src/main.cpp)
-
-
-target_link_libraries(main_node
+# different node libraries
+add_executable(main_node src/agent_plus_scene.cpp)
+target_link_libraries(main_node PUBLIC
   multi_agent_vector_fields
   yaml-cpp
-  ${catkin_LIBRARIES}
+)
+
+add_executable(test_node src/agent_plus_scene_status)
+target_link_libraries(test_node PUBLIC
+  multi_agent_vector_fields
+  yaml-cpp
+)
+
+add_executable(multi_agent_feedback_node src/agent_plus_scene_status_new.cpp)
+target_link_libraries(multi_agent_feedback_node PUBLIC
+  multi_agent_vector_fields
+  yaml-cpp
 )
 
 
-install(TARGETS multi_agent_vector_fields main_node
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+add_executable(bench_node src/planner_benchmark.cpp)
+target_link_libraries(bench_node
+  multi_agent_vector_fields
+  yaml-cpp
 )
 
-
-install(DIRECTORY launch config
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}
+# Install Python scripts
+catkin_install_python(PROGRAMS
+  scripts/multi_agent_feedback_node_launcher.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
-
