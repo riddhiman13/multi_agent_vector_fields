@@ -183,6 +183,7 @@ int main(int argc, char** argv) {
                         k_a_ee, k_c_ee, 
                         k_r_ee, k_d_ee, 
                         k_manip, k_r_force, 
+                        std::vector<int>{},
                         start_orientation, 
                         goal_orientation,
                         velocity_max, detect_shell_rad,

@@ -2,6 +2,7 @@
 #include <ros/ros.h>
 #include <cassert>
 #include <random>
+#include <thread>
 
 #include "multi_agent_vector_fields/obstacle.h"
 
@@ -409,6 +410,7 @@ void CfAgent::cfPrediction(const std::vector<Eigen::Vector3d> &manip_map,
       attractorForce(k_attr, k_damp, k_goal_scale);
       updatePositionAndVelocity(delta_t);
       predictObstacles(delta_t);
+      std::this_thread::yield();
     }
     auto end_prediction = std::chrono::steady_clock::now();
     if (running_) {

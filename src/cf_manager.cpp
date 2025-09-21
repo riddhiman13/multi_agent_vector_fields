@@ -8,6 +8,11 @@
 #include <limits>
 #include <memory>
 
+// Linux headers for setting thread CPU affinity
+#include <pthread.h>
+#include <sched.h>
+#include <unistd.h>
+
 using Eigen::Vector3d;
 using std::vector;
 
@@ -19,6 +24,7 @@ CfManager::CfManager(
     const std::vector<double> &k_a_ee, const std::vector<double> &k_c_ee,
     const std::vector<double> &k_r_ee, const std::vector<double> &k_d_ee,
     const std::vector<double> &k_manip, const std::vector<double> &k_r_force,
+    const std::vector<int> &cpu_affinity,
     const Eigen::Quaterniond& start_orientation,
     const Eigen::Quaterniond& goal_orientation,
     const double velocity_max, const double detect_shell_rad,
@@ -32,13 +38,14 @@ CfManager::CfManager(
       k_d_ee_{k_d_ee},
       k_manip_{k_manip},
       k_r_force_{k_r_force},
+      cpu_affinity_{cpu_affinity},
       run_prediction_{false},
       approach_dist_{approach_dist},
       real_ee_agent_(0, agent_pos, goal_pos, detect_shell_rad, agent_mass,
                      radius, velocity_max, approach_dist, obstacles.size(),start_orientation,goal_orientation) 
 {
   init(goal_pos, delta_t, obstacles, k_a_ee, k_c_ee, k_r_ee, k_d_ee, k_manip,
-       k_r_force, velocity_max, approach_dist, detect_shell_rad,start_orientation,goal_orientation);
+       k_r_force, cpu_affinity, velocity_max, approach_dist, detect_shell_rad,start_orientation,goal_orientation);
 };
 
 void CfManager::init(
@@ -46,7 +53,8 @@ void CfManager::init(
     const std::vector<Obstacle> &obstacles, const std::vector<double> &k_a_ee,
     const std::vector<double> &k_c_ee, const std::vector<double> &k_r_ee,
     const std::vector<double> &k_d_ee, const std::vector<double> &k_manip,
-    const std::vector<double> &k_r_force, const double velocity_max,
+    const std::vector<double> &k_r_force, const std::vector<int> &cpu_affinity,
+    const double velocity_max,
     const double approach_dist, const double detect_shell_rad,
     const Eigen::Quaterniond& start_orientation, // for orientation
     const Eigen::Quaterniond& goal_orientation,  
@@ -131,6 +139,33 @@ void CfManager::init(
         k_a_ee_[i], k_c_ee_[i], k_r_ee_[i], k_d_ee_[i], k_manip_[i],
         prediction_freq_multiple * delta_t, max_prediction_steps));
   }
+  // Set CPU affinity for each thread
+  if (!cpu_affinity_.empty()){
+  int num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+    for (size_t i = 0; i < prediction_threads_.size(); ++i) {
+      int cpu_core = cpu_affinity_[i % cpu_affinity_.size()];
+
+      if (cpu_core < 0 || cpu_core >= num_cpus) {
+        std::cerr << "CfManager: Invalid CPU core " << cpu_core
+          << " (system has " << num_cpus << " CPUs). Skipping affinity for thread "
+          << i << "." << std::endl;
+        continue;
+      }
+
+      cpu_set_t cpuset;
+      CPU_ZERO(&cpuset);
+      CPU_SET(cpu_core, &cpuset);
+
+      pthread_t thread_handle = prediction_threads_[i].native_handle();
+      int result = pthread_setaffinity_np(thread_handle, sizeof(cpu_set_t), &cpuset);
+      if (result != 0) {
+        std::cerr << "CfManager: Failed to set CPU affinity for prediction thread "
+          << i << " to core " << cpu_core << " (error=" << result << ")." << std::endl;
+      }
+    }
+  }
+
+
   ROS_INFO("k_a_ee.size %lu :", k_a_ee.size());
 
   ROS_INFO("CfManager initialized with %lu agents:", ee_agents_.size());
