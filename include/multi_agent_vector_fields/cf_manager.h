@@ -26,6 +26,7 @@ class CfManager {
   std::vector<double> k_d_ee_;
   std::vector<double> k_manip_;
   std::vector<double> k_r_force_;
+  const std::vector<int> &cpu_affinity_;
   std::vector<Eigen::Vector3d> manip_map_;
   bool run_prediction_;
   Eigen::Vector3d init_pos_;
@@ -44,6 +45,7 @@ class CfManager {
           const std::vector<double> &k_d_ee,
           const std::vector<double> &k_manip,
           const std::vector<double> &k_r_force,
+          const std::vector<int> &cpu_affinity,
           const Eigen::Quaterniond& start_orientation,
           const Eigen::Quaterniond& goal_orientation,
           const double velocity_max = 0.5, 
@@ -107,6 +109,7 @@ class CfManager {
       const std::vector<double> &k_d_ee, 
       const std::vector<double> &k_manip,
       const std::vector<double> &k_r_force, 
+      const std::vector<int> &cpu_affinity = std::vector<int>{},
       const double velocity_max = 0.5,
       const double approach_dist = 0.25, 
       const double detect_shell_rad = 0.8,

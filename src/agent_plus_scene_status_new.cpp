@@ -73,27 +73,28 @@ int main(int argc, char** argv) {
     ros::init(argc, argv, node_name);
     ros::NodeHandle nh;
     // store history of the trajectorys
-    std::string home_dir = std::getenv("HOME");
-    std::string log_path = home_dir + "/FLIQC_example_workspace_ros/src/multi_agent_vector_fields/data/predicted_paths.txt";
-    std::ofstream output_file(log_path);
-    if (!output_file.is_open()) 
-    {
-        ROS_WARN_STREAM(node_name << ": Failed to open file for writing.");
-        return -1;
-    }
+    // std::string home_dir = std::getenv("HOME");
+    // std::string log_path = home_dir + "/FLIQC_example_workspace_ros/src/multi_agent_vector_fields/data/predicted_paths.txt";
+    // std::ofstream output_file(log_path);
+    // if (!output_file.is_open()) 
+    // {
+    //     ROS_WARN_STREAM(node_name << ": Failed to open file for writing.");
+    //     return -1;
+    // }
 
-    std::string trajectory_log_path = home_dir + "/FLIQC_example_workspace_ros/src/multi_agent_vector_fields/data/real_path.txt";
-    std::ofstream trajectory_output_file(trajectory_log_path);
-    if (!trajectory_output_file.is_open()) 
-    {
-        ROS_WARN_STREAM(node_name << ": Failed to open trajectory history file for writing.");
-        return -1;
-    }
+    // std::string trajectory_log_path = home_dir + "/FLIQC_example_workspace_ros/src/multi_agent_vector_fields/data/real_path.txt";
+    // std::ofstream trajectory_output_file(trajectory_log_path);
+    // if (!trajectory_output_file.is_open()) 
+    // {
+    //     ROS_WARN_STREAM(node_name << ": Failed to open trajectory history file for writing.");
+    //     return -1;
+    // }
   
     // Load ROS parameters
     int frequency;
     double detect_shell_rad, agent_mass, agent_radius, velocity_max, approach_dist;
     std::vector<double> k_a_ee, k_c_ee, k_r_ee, k_r_force, k_d_ee, k_manip;
+    std::vector<int> cpu_affinity;
 
     readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/frequency",         frequency);
     readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/detect_shell_rad",  detect_shell_rad);
@@ -108,6 +109,21 @@ int main(int argc, char** argv) {
     readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/k_r_force", k_r_force);
     readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/k_d_ee",    k_d_ee);
     readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/k_manip",   k_manip);
+    readParamWithDisplay(nh, node_name, "/multi_agent_vector_fields/cpu_affinity", cpu_affinity);
+
+    // check cpu_affinity and k_a_ee's relationship:
+    if (cpu_affinity.empty()) {
+        ROS_WARN_STREAM(node_name << ": CPU affinity not set, threads will not be bound to specific CPU cores.");
+    } else if (cpu_affinity.size() < k_a_ee.size()) {
+        if (k_a_ee.size() % cpu_affinity.size() != 0) {
+            ROS_WARN_STREAM(node_name << ": Thread count (" << k_a_ee.size() 
+                             << ") share cpu affinity count (" << cpu_affinity.size() << ") with remainder " 
+                             << k_a_ee.size() % cpu_affinity.size() << ". Might have imbalanced CPU usage across threads.");
+        } else {
+            ROS_INFO_STREAM(node_name << ": Thread count (" << k_a_ee.size() 
+                             << ") evenly share cpu affinity count (" << cpu_affinity.size() << ").");
+        }
+    }
 
     // Set up publishers and subscribers
     ros::Publisher marker_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 10);
@@ -140,7 +156,7 @@ int main(int argc, char** argv) {
     CfManager cf_manager(start_pos_, goal_pos_, 
                         1.0/ static_cast<double>(frequency), 
                         obstacles_, 
-                        k_a_ee, k_c_ee, k_r_ee, k_d_ee, k_manip, k_r_force, 
+                        k_a_ee, k_c_ee, k_r_ee, k_d_ee, k_manip, k_r_force, cpu_affinity,
                         start_orientation_, goal_orientation_,
                         velocity_max, detect_shell_rad, agent_mass, agent_radius);
 
@@ -162,11 +178,11 @@ int main(int argc, char** argv) {
             const auto& predicted_paths = cf_manager.getPredictedPaths();
 
             // collect all the history predictve paths
-            for (const auto& path : predicted_paths) {
-                for (const auto& point : path) {
-                    output_file << point.x() << " " << point.y() << " " << point.z() << "\n";
-                }
-            }
+            // for (const auto& path : predicted_paths) {
+            //     for (const auto& point : path) {
+            //         output_file << point.x() << " " << point.y() << " " << point.z() << "\n";
+            //     }
+            // }
 
             Eigen::Vector3d current_agent_pos = cf_manager.getNextPosition();
             Eigen::Quaterniond current_agent_orientation = cf_manager.getNextOrientation();
@@ -253,12 +269,12 @@ int main(int argc, char** argv) {
         rate.sleep();
     }
     ROS_INFO_STREAM("---------Process Finished---------");
-    for (const auto& point : trajectory_history) 
-    {
-        trajectory_output_file << point.x() << " " << point.y() << " " << point.z() << "\n";
-    }
-    output_file.close();
-    trajectory_output_file.close();
+    // for (const auto& point : trajectory_history) 
+    // {
+    //     trajectory_output_file << point.x() << " " << point.y() << " " << point.z() << "\n";
+    // }
+    // output_file.close();
+    // trajectory_output_file.close();
 
     return 0;
 }
