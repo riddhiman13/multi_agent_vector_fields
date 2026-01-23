@@ -5,16 +5,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(catkin REQUIRED COMPONENTS
-  geometry_msgs
-  message_generation
   roscpp
-  std_msgs
-  tf2_geometry_msgs
-  tf2_ros
-  visualization_msgs
-  eigen_conversions
   roslib
+  tf2_ros
+  geometry_msgs
+  std_msgs
+  visualization_msgs
   moveit_msgs
+  franka_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -24,14 +22,10 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES multi_agent_vector_fields
   CATKIN_DEPENDS
-    geometry_msgs
-    message_runtime
     roscpp
-    std_msgs
-    tf2_geometry_msgs
     tf2_ros
+    geometry_msgs
     visualization_msgs
-    moveit_msgs
 )
 
 
