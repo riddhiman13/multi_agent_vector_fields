@@ -5,10 +5,12 @@ multi_agent_vector_fields:
   agent_radius: 0.05        # agent size [m]
   velocity_max: 1.0         # max speed [m/s]
   approach_dist: 0.01       # stop threshold [m]
-  k_a_ee: [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0]      # attraction  
-  k_c_ee: [2.0, 4.0, 2.0, 4.0, 4.0, 4.0, 4.0]      # circumvention 
-  k_r_ee: [2.0, 2.0, 4.0, 4.0, 4.0, 4.0, 4.0]      # repulsion  
-  k_r_force: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # body repulsion  
-  k_d_ee: [3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0]      # damping 
-  k_manip: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]     # manipulability 
-  cpu_affinity: [16, 17, 18, 19, 20, 21, 22, 23]    # CPU affinity
+  k_a_ee: [4.0, 4.0, 4.0, 4.0]      # attraction  
+  k_c_ee: [2.0, 4.0, 2.0, 4.0]      # circumvention 
+  k_r_ee: [2.0, 2.0, 4.0, 4.0]      # repulsion  
+  k_r_force: [0.0, 0.0, 0.0, 0.0]   # body repulsion  
+  k_d_ee: [3.0, 3.0, 3.0, 3.0]      # damping 
+  k_manip: [0.0, 0.0, 0.0, 0.0]     # manipulability 
+  cpu_affinity: [16, 17, 18, 19]    # CPU affinity #, 22, 23
+  # main_affinity: 2
+  # main_priority: 1
